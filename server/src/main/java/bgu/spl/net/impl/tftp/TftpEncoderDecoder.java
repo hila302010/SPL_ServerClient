@@ -24,12 +24,12 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
 
 class Operation{
     
-    private int[] opcode; 
+    private short[] opcode; 
     private String fileName;
-    private int[] packetSize;
-    private int[] blockNumber;
+    private short[] packetSize;
+    private short[] blockNumber;
     private String data;
     private boolean addedDeleted;
-    private int[] errorCode;
+    private short[] errorCode;
     private String errMsg;
 } 
