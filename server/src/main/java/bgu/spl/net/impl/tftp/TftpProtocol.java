@@ -14,6 +14,11 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     @Override
     public void process(byte[] message) {
         // TODO implement this
+
+        // I send the messsage to the encoder
+        // the encoder is encoding the messge telling me what to do
+        // I do
+        
         throw new UnsupportedOperationException("Unimplemented method 'process'");
     }
 
