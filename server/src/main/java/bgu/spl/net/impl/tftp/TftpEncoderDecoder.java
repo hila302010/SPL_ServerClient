@@ -1,111 +1,118 @@
 package bgu.spl.net.impl.tftp;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import bgu.spl.net.api.MessageEncoderDecoder;
+import main.java.bgu.spl.net.impl.tftp.Packet;
+
+enum operations {
+    RRQ, 
+    WRQ,
+    DATA,
+    ACK,
+    ERROR,
+    DIRQ,
+    LOGRQ,
+    DELRQ,
+    BCAST,
+    DISC
+}
 
 public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
     //TODO: Implement here the TFTP encoder and decoder
 
-    private byte[] buffer = new byte[1 << 10]; //start with 1k
+    private static final int MAX_PACKET_SIZE = 1 << 16;
+
+    private byte[] buffer = new byte[MAX_PACKET_SIZE]; 
     private int bufferCurrentPosition = 0;
+    Packet p = new Packet();
+    short opcode = null;
 
     @Override
-    public byte[] decodeNextByte(byte nextByte) {
+    public T decodeNextByte(byte nextByte) {
         // TODO: implement this
         
         // check the operation code
-        if (bufferCurrentPosition == 2) {
-            //byte [] b = new byte []{0 , 10};
-            short opcode = ( short ) ((( short ) buffer [0]) << 8 | ( short ) ( buffer [1]) );
-            checkOpcode(opcode);
+        if (bufferCurrentPosition == 2) { // 01a0
+            opcode = ( short ) ((( short ) buffer [0]) << 8 | ( short ) ( buffer [1]) );
+            packet.setOpcode(opcode);
+
+            if(opcode == operations.DISC || opcode==operations.DIRQ){
+                return packet;
+            }
+        }
+        else if(bufferCurrentPosition == 4 & opcode == operations.ACK)
+        {
+            short blockNumber = ( short ) ((( short ) buffer [2]) << 8 | ( short ) ( buffer [3]) );
+            packet.setBlockNumber(blockNumber);
+            return packet;
+        }
+        // check if null
+        else if( opcode == operations.DATA){
+            if(bufferCurrentPosition == 6)
+            {
+                short packetSize = ( short ) ((( short ) buffer [2]) << 8 | ( short ) ( buffer [3]) );
+                short blockNumber = ( short ) ((( short ) buffer [4]) << 8 | ( short ) ( buffer [5]) );
+                packet.setPacketSize(packetSize);
+                packet.setBlockNumber(blockNumber);
+            }
+            else if(bufferCurrentPosition == packet.getPacketSize() + 6)
+            {
+                // read from the buffer all the bytes from 6 to packet.getPacketSize + 6
+                // convert the bytes to string
+                String data = new String(buffer, 6, packet.getPacketSize(), StandardCharsets.UTF_8);
+                packet.setPacketData(data);
+                return packet;
+            }
+        }
+        
+        if(nextByte == 0 && bufferCurrentPosition >= 2) 
+        {
+            if(opcode==operations.RRQ || opcode==operations.WRQ || opcode == operations.DELRQ)
+            {
+                String fileName = new String(buffer, 2, bufferCurrentPosition-2, StandardCharsets.UTF_8);
+                packet.setPacketFileName(fileName);
+            }
+            else if(opcode==operations.ERROR)
+            {
+                if(bufferCurrentPosition>=4) // in case the error code is 0- don't stop
+                {
+                    short errorCode = ( short ) ((( short ) buffer [2]) << 8 | ( short ) ( buffer [3]) );
+                    string errorMsg = new String(buffer, 4, bufferCurrentPosition-4, StandardCharsets.UTF_8);
+                    packet.setErrorCode(errorCode);
+                    packet.setErrorMsg(errorMsg);
+                }
+            }
+            else if(opcode == operations.LOGRQ)
+            {
+                String userName = new String(buffer, 2, bufferCurrentPosition-2, StandardCharsets.UTF_8);
+                packet.setPacketUserName(userName);
+            }
+            else if(opcode == operations.BCAST && bufferCurrentPosition > 2)
+            {
+                boolean addedDeleted = buffer[2] != 0;
+                String fileName = new String(buffer, 3, bufferCurrentPosition-3, StandardCharsets.UTF_8);
+                packet.setPacketFileName(fileName);
+                packet.setAddedOrDeleted(addedDeleted);
+            }
+            return packet;
         }
 
-        pushByte(nextByte);
-        return null;
+        buffer[bufferCurrentPosition++] = nextByte; // push into the buffer
+        return null; // not a packet yet
     }
 
     @Override
-    public byte[] encode(byte[] message) {
+    public byte[] encode(T message) {
         //TODO: implement this
-
+        
+        // get the opcode from the message
 
         return null;
     }
-
-    private void pushByte(byte nextByte) {
-        if (len >= bytes.length) {
-            bytes = Arrays.copyOf(bytes, len * 2);
-        }
-
-        bytes[len++] = nextByte;
-    }
-
-    private void checkOpcode(short opcode)
-    {
-        switch (opcode) {
-            case 1: // RRQ: Read request
-                
-                break;
-            case 2: // WRQ: Write request
-                
-                break;
-            case 3: // Data: Data Packet
-                
-                break;
-            case 4: // ACK: Acknowledgment
-                
-                break;
-            case 5: // ERROR
-                
-                break;
-            case 6: // DIRQ: Directory listing request
-                
-                break;
-            case 7: // LOGRQ: Login request
-                
-                break;
-            case 8: // DELRQ: Delete file request
-                
-                break;
-            case 9: // BCAST: Brodcast file added/deleted
-                
-                break;
-            case 10: // DISC: Disconnect
-                
-                break;
-        
-            default:
-                break;
-        }
-    }
+    // מה מני אמר
+    // צריך לשנות את הקוד של השרת
+    // להגדיר את הממשק של connections
+    // 
 }
-
-class Operation{
-    
-    private short[] opcode; 
-    private String fileName;
-    private short[] packetSize;
-    private short[] blockNumber;
-    private String data;
-    private boolean addedDeleted;
-    private short[] errorCode;
-    private String errMsg;
-
-    Operation()
-    {
-        opcode = null;
-        fileName = null;
-        packetSize = null;
-        blockNumber = null;
-        data = null;
-        addedDeleted = null;
-        errorCode = null;
-        errMsg = null;
-    }
-
-    void DecodeMsg (byte[] msg)
-    {
-        //int opcode =
-    }
-} 
