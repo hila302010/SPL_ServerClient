@@ -1,31 +1,71 @@
 package bgu.spl.net.impl.tftp;
 
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+
 import bgu.spl.net.api.BidiMessagingProtocol;
 import bgu.spl.net.srv.Connections;
+import bgu.spl.net.impl.tftp.Packet;
 
-public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
+
+class holder{
+    static ConcurrentHashMap<Integer, Boolean> ids_login = new ConcurrentHashMap<>();
+}
+
+
+
+public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
+
+    private boolean shouldTerminate;
+    private int connectionId;
+    private TftpConnections<Packet> connections;
+    private List<String> users;
 
     @Override
-    public void start(int connectionId, Connections<byte[]> connections) {
+    public void start(int connectionId, TftpConnections<Packet> connections) {
         // TODO implement this
-        throw new UnsupportedOperationException("Unimplemented method 'start'");
+       this.shouldTerminate = false;
+       this.connectionId = connectionId;
+       this.connections = connections;
+       holder.ids_login.put(connectionId, true);
+       this.users = new List();
     }
 
     @Override
-    public void process(byte[] message) {
+    public void process(Packet packet) {
         // TODO implement this
 
-        // I send the messsage to the encoder
-        // the encoder is encoding the messge telling me what to do
-        // I do
+        short opcode = packet.getOpcode();
         
-        throw new UnsupportedOperationException("Unimplemented method 'process'");
+        // happens when DELETE OR ADDING FILE 
+        if(opcode == Operations.BCAST.getValue())
+        {
+            for(Integer id : holder.ids_login.keySet())
+            {
+                connections.send(id, message);
+            }
+        }
+        if(opcode == Operations.DELRQ.getValue())
+        {
+
+        }
+        if(opcode == Operations.LOGRQ.getValue())
+        {
+            users.add(packet.getUserName());
+        }
+
+
+        
+        // after handeling the message - should terminate = true
+        shouldTerminate = true;
+        
     }
 
     @Override
     public boolean shouldTerminate() {
         // TODO implement this
-        throw new UnsupportedOperationException("Unimplemented method 'shouldTerminate'");
+        this.connections.disconnect(this.connectionId);
+        holder.ids_login.remove(this.connectionId);
     } 
 
 
