@@ -4,7 +4,7 @@ import bgu.spl.net.srv.Server;
 
 public class EchoServer {
 
-    public static void main(String[] args) {
+    /*public static void main(String[] args) {
 
         // you can use any server... 
         Server.threadPerClient(
@@ -13,5 +13,5 @@ public class EchoServer {
                 LineMessageEncoderDecoder::new //message encoder decoder factory
         ).serve();
 
-    }
+    }*/
 }
