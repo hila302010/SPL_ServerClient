@@ -1,6 +1,7 @@
 package bgu.spl.net.impl.tftp;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -22,9 +23,6 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
     private File filesFolder;
     
 
-
-    //private List<String> users;
-
     @Override
     public void start(int connectionId, Connections<Packet> connections) {
         // TODO implement this
@@ -41,10 +39,45 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         // TODO implement this
 
         short opcode = packet.getOpcode();
-
         // -------------Check if the user is connected, if he isnt every action exept logrq result an error--------------------------
         
+        // RRQ
+        if (opcode == Operations.RRQ.getValue()) {
+            String fileName = packet.getFileName();
 
+            // Check if the file exists in the Files folder
+            File file = new File(filesFolder, fileName);
+            if (!file.exists()) {
+                // File not found, send an error packet
+                Packet errorPacket = getErrPack((short) 1, "File not found");
+                connections.send(connectionId, errorPacket);
+                return;
+            }
+
+            try (FileInputStream fis = new FileInputStream(file)) {
+                byte[] buffer = new byte[512]; // 512 bytes per DATA packet
+                int bytesRead;
+                short blockNumber = 1;
+
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    // Create a DATA packet with the read data
+                    Packet dataPacket = new Packet();
+                    dataPacket.setOpcode(Operations.DATA.getValue());
+                    dataPacket.setBlockNumber(blockNumber++);
+                    dataPacket.setData(new String(buffer, 0, bytesRead, StandardCharsets.UTF_8));
+
+                    // Send the DATA packet to the client
+                    connections.send(connectionId, dataPacket);
+                }
+
+                // Print a message indicating that the RRQ is complete
+                System.out.println("RRQ " + fileName + " complete");
+            } catch (IOException e) {
+                // Error reading the file, send an error packet
+                Packet errorPacket = getErrPack((short) 2, "Error reading file");
+                connections.send(connectionId, errorPacket);
+            }
+        }
         // WRQ
         if(opcode == Operations.WRQ.getValue()){
 
@@ -82,28 +115,40 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                 System.out.println("WRQ " + fileName + " complete");
             }
         }
-
         
 
 
-        
-        
-        // RRQ
-        if(opcode == Operations.RRQ.getValue()){
-            String filename = packet.getFileName();
-        }
-        
-        // happens when DELETE OR ADDING FILE 
-        if(opcode == Operations.BCAST.getValue())
+        // DIRQ
+        if(opcode == Operations.DIRQ.getValue())
         {
-            for(Integer id : Holder.ids_login.keySet())
-            {
-                connections.send(id, packet);
+            // Get the list of files in the directory
+            File[] files = filesFolder.listFiles((dir, name) -> {
+                return !name.endsWith(".uploading"); // Exclude files currently being uploaded
+            });
+
+            StringBuilder fileListBuilder = new StringBuilder();
+
+            // Append file names to the directory listing string
+            for (File file : files) {
+                fileListBuilder.append(file.getName()).append("\0"); // Separate file names with null byte
             }
-        }
-        if(opcode == Operations.DELRQ.getValue())
-        {
 
+            String fileList = fileListBuilder.toString();
+
+            // Split the file list into chunks of 512 bytes (maximum packet size)
+            while (fileList.length() > 0) {
+                int endIndex = Math.min(fileList.length(), 512);
+                String chunk = fileList.substring(0, endIndex);
+                fileList = fileList.substring(endIndex);
+
+                // Create and send a DATA packet containing the chunk
+                Packet dataPacket = new Packet();
+                dataPacket.setOpcode(Operations.DATA.getValue());
+                dataPacket.setData(chunk);
+
+                connections.send(connectionId, dataPacket);
+            }
+            
         }
 
 
@@ -137,7 +182,31 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         // DELRQ
         if(opcode == Operations.DELRQ.getValue()){
 
-            
+            // get file to delete
+            String fileNameToDelete = packet.getFileName();
+            File fileToDelete = new File(filesFolder, fileNameToDelete);
+
+            if (fileToDelete.exists()) {
+                if (fileToDelete.delete()) {
+                    // File deletion successful, send broadcast
+                    Packet broadcastPacket = new Packet();
+                    broadcastPacket.setOpcode(Operations.BCAST.getValue());
+                    broadcastPacket.setFileName(fileNameToDelete);
+                    broadcastPacket.setAddedOrDeleted(true);
+                    
+                    for (Integer id : Holder.ids_login.keySet()) {
+                        connections.send(id, broadcastPacket);
+                    }
+                } else {
+                    // File deletion failed
+                    Packet errorPacket = getErrPack((short) 2, "Failed to delete file");
+                    connections.send(connectionId, errorPacket);
+                }
+            } 
+            else { // File does not exist
+                Packet errorPacket = getErrPack((short) 1, "File not found");
+                connections.send(connectionId, errorPacket);
+            }
         }
 
 
@@ -154,17 +223,15 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         }
 
 
-
-
-
-
-
-
-
-
-        
-        // after handeling the message - should terminate = true
-        shouldTerminate = true;
+        // can it even happen ???
+        if(opcode == Operations.BCAST.getValue())
+        {
+            
+        }
+        if(opcode == Operations.ERROR.getValue())
+        {
+            
+        }
         
     }
 
@@ -220,8 +287,11 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
     @Override
     public boolean shouldTerminate() {
         // TODO implement this
-        this.connections.disconnect(this.connectionId);
-        Holder.ids_login.remove(this.connectionId);
+        if(shouldTerminate)
+        {
+            this.connections.disconnect(this.connectionId);
+            //Holder.ids_login.remove(this.connectionId);
+        }
 
         return shouldTerminate;
     } 

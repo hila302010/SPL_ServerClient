@@ -57,7 +57,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
             }
         }
         
-        if(nextByte == 0 && bufferCurrentPosition >= 2) 
+        if(nextByte == 0 && bufferCurrentPosition >= 2 && opcode!=Operations.DATA.getValue()) 
         {
             if(opcode==Operations.RRQ.getValue() || opcode==Operations.WRQ.getValue() || opcode == Operations.DELRQ.getValue())
             {
@@ -232,3 +232,49 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
     }
     
 }
+
+/* // CHAT GPT
+ * public byte[] encode(Packet p) {
+        short opcode = p.getOpcode();
+        ByteBuffer buffer = ByteBuffer.allocate(MAX_PACKET_SIZE);
+        buffer.putShort(opcode);
+        
+        switch (opcode) {
+            case Operations.DISC.getValue():
+            case Operations.DIRQ.getValue():
+                break;
+            case Operations.ACK.getValue():
+                buffer.putShort(p.getBlockNumber());
+                break;
+            case Operations.DATA.getValue():
+                buffer.putShort(p.getPacketSize());
+                buffer.putShort(p.getBlockNumber());
+                buffer.put(p.getData().getBytes(StandardCharsets.UTF_8));
+                break;
+            case Operations.RRQ.getValue():
+            case Operations.WRQ.getValue():
+            case Operations.DELRQ.getValue():
+                buffer.put(p.getFileName().getBytes(StandardCharsets.UTF_8));
+                buffer.put((byte) 0); // Null terminator
+                break;
+            case Operations.ERROR.getValue():
+                buffer.putShort(p.getErrorCode());
+                buffer.put(p.getErrMsg().getBytes(StandardCharsets.UTF_8));
+                buffer.put((byte) 0); // Null terminator
+                break;
+            case Operations.LOGRQ.getValue():
+                buffer.put(p.getUserName().getBytes(StandardCharsets.UTF_8));
+                buffer.put((byte) 0); // Null terminator
+                break;
+            case Operations.BCAST.getValue():
+                buffer.put((byte) (p.getAddedOrDeleted() ? 1 : 0));
+                buffer.put(p.getFileName().getBytes(StandardCharsets.UTF_8));
+                buffer.put((byte) 0); // Null terminator
+                break;
+            default:
+                break;
+        }
+        
+        return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
+    }
+ */
