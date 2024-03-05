@@ -1,4 +1,4 @@
-package main.java.bgu.spl.net.impl.tftp;
+package bgu.spl.net.impl.tftp;
 
 public class Packet {
     private short opcode; 
@@ -97,3 +97,4 @@ public class Packet {
         return errMsg;
     }
 }
+
