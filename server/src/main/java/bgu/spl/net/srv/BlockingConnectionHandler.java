@@ -1,7 +1,7 @@
 package bgu.spl.net.srv;
 
-import bgu.spl.net.api.MessageEncoderDecoder;
-import bgu.spl.net.api.MessagingProtocol;
+import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
+import bgu.spl.net.impl.tftp.TftpProtocol;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -9,14 +9,14 @@ import java.net.Socket;
 
 public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler<T> {
 
-    private final MessagingProtocol<T> protocol;
-    private final MessageEncoderDecoder<T> encdec;
+    private final TftpProtocol<T> protocol;
+    private final TftpEncoderDecoder<T> encdec;
     private final Socket sock;
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private volatile boolean connected = true;
 
-    public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<T> reader, MessagingProtocol<T> protocol) {
+    public BlockingConnectionHandler(Socket sock, TftpEncoderDecoder<T> reader, TftpProtocol<T> protocol) {
         this.sock = sock;
         this.encdec = reader;
         this.protocol = protocol;
@@ -33,11 +33,11 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
             while (!protocol.shouldTerminate() && connected && (read = in.read()) >= 0) {
                 T nextMessage = encdec.decodeNextByte((byte) read);
                 if (nextMessage != null) {
-                    T response = protocol.process(nextMessage);
-                    if (response != null) {
+                    protocol.process(nextMessage);
+                    /*if (response != null) {
                         out.write(encdec.encode(response));
                         out.flush();
-                    }
+                    }*/
                 }
             }
 
@@ -55,6 +55,13 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
 
     @Override
     public void send(T msg) {
-        //IMPLEMENT IF NEEDED
+        try{
+            if (msg != null) {
+                out.write(encdec.encode(msg));
+                out.flush();
+            }
+        }catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
 }

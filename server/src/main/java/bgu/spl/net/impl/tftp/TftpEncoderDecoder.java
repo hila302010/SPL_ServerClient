@@ -16,11 +16,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
     private int bufferCurrentPosition = 0;
     Packet packet = new Packet();
     short opcode = 0;
-
     int encodeIdx;
-
-
-
 
 
     @Override
@@ -28,7 +24,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
         // TODO: implement this
         
         // check the operation code
-        if (bufferCurrentPosition == 2) { // 01a0
+        if (bufferCurrentPosition == 2) { 
             opcode = ( short ) ((( short ) buffer [0]) << 8 | ( short ) ( buffer [1]) );
             packet.setOpcode(opcode);
 
@@ -108,12 +104,9 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
         int currIndex = 0;
 
         short opcode = p.getOpcode();
-        byte[] opcodeByte = shortToByte(p.getOpcode());
-
-
+        byte[] opcodeByte = shortToByte(opcode);
 
         // separate to the different scenarios
-
         if(opcode == Operations.DISC.getValue() || opcode==Operations.DIRQ.getValue()){
             return opcodeByte;
         }
@@ -162,7 +155,6 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
             output[pSize-1] = 0; // The packet ends whis byte 0
 
             return output;
-
         }
 
 
