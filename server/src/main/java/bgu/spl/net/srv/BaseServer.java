@@ -1,7 +1,7 @@
 package bgu.spl.net.srv;
 
-import bgu.spl.net.tftp.TftpEncoderDecoder;
-import bgu.spl.net.tftp.TftpProtocol;
+import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
+import bgu.spl.net.impl.tftp.TftpProtocol;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -10,14 +10,14 @@ import java.util.function.Supplier;
 public abstract class BaseServer<T> implements Server<T> {
 
     private final int port;
-    private final Supplier<TftpProtocol<T>> protocolFactory;
-    private final Supplier<TftpEncoderDecoder<T>> encdecFactory;
+    private final Supplier<TftpProtocol> protocolFactory;
+    private final Supplier<TftpEncoderDecoder> encdecFactory;
     private ServerSocket sock;
 
     public BaseServer(
             int port,
-            Supplier<TftpProtocol<T>> protocolFactory,
-            Supplier<TftpEncoderDecoder<T>> encdecFactory) {
+            Supplier<TftpProtocol> protocolFactory,
+            Supplier<TftpEncoderDecoder> encdecFactory) {
 
         this.port = port;
         this.protocolFactory = protocolFactory;
