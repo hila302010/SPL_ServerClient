@@ -1,7 +1,5 @@
 package bgu.spl.net.impl.tftp;
 
-import bgu.spl.net.impl.tftp.TftpProtocol;
-import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 import bgu.spl.net.srv.Server;
 
 public class TftpServer {

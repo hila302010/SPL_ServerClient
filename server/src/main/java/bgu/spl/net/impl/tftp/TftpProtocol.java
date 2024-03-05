@@ -18,17 +18,16 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
 
     private boolean shouldTerminate;
     private int connectionId;
-    private TftpConnections<Packet> connections;
-    private List<String> users;
+    private Connections<Packet> connections;
+    //private List<String> users;
 
     @Override
-    public void start(int connectionId, TftpConnections<Packet> connections) {
+    public void start(int connectionId, Connections<Packet> connections) {
         // TODO implement this
        this.shouldTerminate = false;
        this.connectionId = connectionId;
        this.connections = connections;
        holder.ids_login.put(connectionId, true);
-       this.users = new List();
     }
 
     @Override
@@ -42,7 +41,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         {
             for(Integer id : holder.ids_login.keySet())
             {
-                connections.send(id, message);
+                connections.send(id, packet);
             }
         }
         if(opcode == Operations.DELRQ.getValue())
@@ -51,7 +50,10 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         }
         if(opcode == Operations.LOGRQ.getValue())
         {
-            users.add(packet.getUserName());
+            // needs to add userName if it doesn't exist
+            
+            // if successful send ACK RQ:
+            
         }
 
 
@@ -66,6 +68,8 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         // TODO implement this
         this.connections.disconnect(this.connectionId);
         holder.ids_login.remove(this.connectionId);
+
+        return shouldTerminate;
     } 
 
 
