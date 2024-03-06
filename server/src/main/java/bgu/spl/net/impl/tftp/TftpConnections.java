@@ -6,18 +6,20 @@ import bgu.spl.net.srv.Connections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-class Holder{
-    static ConcurrentHashMap<Integer, Boolean> ids_login = new ConcurrentHashMap<>();
-}
+/*class Holder<T>{
+   public static ConcurrentHashMap<Integer, ConnectionHandler<T>> connectionHandlers = new ConcurrentHashMap<>();
+}*/
 
-class UserNames{
-    static ConcurrentHashMap<String, Boolean> user_names = new ConcurrentHashMap<>();
-}
+/*class UserNames{
+     ConcurrentHashMap<String, Boolean> user_names = new ConcurrentHashMap<>();
+}*/
 
 
 public class TftpConnections<T> implements Connections<T> {
     
-    private Map<Integer, ConnectionHandler<T>> connectionHandlers = new ConcurrentHashMap<>();
+    public ConcurrentHashMap<Integer, ConnectionHandler<T>> connectionHandlers = new ConcurrentHashMap<>();
+    public ConcurrentHashMap<String, Boolean> user_names = new ConcurrentHashMap<>();
+
     
     @Override
     public void connect(int connectionId, ConnectionHandler<T> handler) {

@@ -3,6 +3,7 @@ package bgu.spl.net.srv;
 import bgu.spl.net.impl.tftp.Packet;
 import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 import bgu.spl.net.impl.tftp.TftpProtocol;
+import bgu.spl.net.impl.tftp.TftpConnections;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -12,15 +13,19 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
 
     private final TftpProtocol protocol;
     private final TftpEncoderDecoder encdec;
+    private final TftpConnections<T> connections;
     private final Socket sock;
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private volatile boolean connected = true;
+    private int connectionId;
 
-    public BlockingConnectionHandler(Socket sock, TftpEncoderDecoder reader, TftpProtocol protocol) {
+    public BlockingConnectionHandler(Socket sock, TftpEncoderDecoder reader, TftpProtocol protocol, TftpConnections<T> connections, int connectionId) {
         this.sock = sock;
         this.encdec = reader;
         this.protocol = protocol;
+        this.connections = connections;
+        this.connectionId = connectionId;
     }
 
     @Override
@@ -31,6 +36,8 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
             in = new BufferedInputStream(sock.getInputStream());
             out = new BufferedOutputStream(sock.getOutputStream());
 
+            connections.connectionHandlers.put(connectionId, this);
+            protocol.start(connectionId, (TftpConnections<Packet>)connections);
             while (!protocol.shouldTerminate() && connected && (read = in.read()) >= 0) {
                 Packet nextMessage = encdec.decodeNextByte((byte) read);
                 if (nextMessage != null) {

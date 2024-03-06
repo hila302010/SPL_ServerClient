@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import bgu.spl.net.api.BidiMessagingProtocol;
+import bgu.spl.net.srv.BlockingConnectionHandler;
 import bgu.spl.net.srv.Connections;
 import bgu.spl.net.impl.tftp.Packet;
 
@@ -18,7 +19,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
 
     private boolean shouldTerminate;
     private int connectionId;
-    private Connections<Packet> connections;
+    private TftpConnections<Packet> connections;
     private static final String FILES_FOLDER_PATH = "./server/Files";
     private File filesFolder;
     
@@ -28,9 +29,8 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         // TODO implement this
        this.shouldTerminate = false;
        this.connectionId = connectionId;
-       this.connections = connections;
+       this.connections =  (TftpConnections<Packet>) connections;
        filesFolder = new File(FILES_FOLDER_PATH);
-       Holder.ids_login.put(connectionId, true);
     }
 
 
@@ -41,6 +41,8 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         short opcode = packet.getOpcode();
         // -------------Check if the user is connected, if he isnt every action exept logrq result an error--------------------------
         
+
+
         // RRQ
         if (opcode == Operations.RRQ.getValue()) {
             String fileName = packet.getFileName();
@@ -78,6 +80,8 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                 connections.send(connectionId, errorPacket);
             }
         }
+
+
         // WRQ
         if(opcode == Operations.WRQ.getValue()){
 
@@ -161,7 +165,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             Boolean isExist = false;
 
             // needs to add userName if it doesn't exist
-            for(String name: UserNames.user_names.keySet()){
+            for(String name: connections.user_names.keySet()){
 
                 //in case name already exists
                 if(name == userName){
@@ -172,7 +176,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             }
             // if successful send ACK RQ:
             if(!isExist){
-                UserNames.user_names.put(userName, true);
+                connections.user_names.put(userName, true);
                 Packet ackPacket = getAckPack((short)0);
                 connections.send(connectionId, ackPacket);
             }
@@ -194,7 +198,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                     broadcastPacket.setFileName(fileNameToDelete);
                     broadcastPacket.setAddedOrDeleted(true);
                     
-                    for (Integer id : Holder.ids_login.keySet()) {
+                    for (Integer id : connections.connectionHandlers.keySet()) {
                         connections.send(id, broadcastPacket);
                     }
                 } else {
@@ -215,10 +219,11 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         // DISC
         if(opcode == Operations.DISC.getValue()){
 
-             UserNames.user_names.remove(packet.getUserName());
-             shouldTerminate = true;
-             Packet ackPacket = getAckPack((short)0);
-             connections.send(connectionId, ackPacket);
+            connections.user_names.remove(packet.getUserName());
+            Packet ackPacket = getAckPack((short)0);
+            connections.send(connectionId, ackPacket);
+            connections.disconnect(this.connectionId);
+            shouldTerminate = true;
 
         }
 
@@ -287,12 +292,6 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
     @Override
     public boolean shouldTerminate() {
         // TODO implement this
-        if(shouldTerminate)
-        {
-            this.connections.disconnect(this.connectionId);
-            //Holder.ids_login.remove(this.connectionId);
-        }
-
         return shouldTerminate;
     } 
 
