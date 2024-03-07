@@ -6,7 +6,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import bgu.spl.net.api.BidiMessagingProtocol;
 import bgu.spl.net.srv.BlockingConnectionHandler;
@@ -20,8 +22,9 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
     private boolean shouldTerminate;
     private int connectionId;
     private TftpConnections<Packet> connections;
-    private static final String FILES_FOLDER_PATH = "./server/Files";
+    private static final String FILES_FOLDER_PATH = "/home/hila/Projects/Project3/SPL_Project3/server/Files";
     private File filesFolder;
+    
     
 
     @Override
@@ -120,38 +123,46 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             }
         }
         
-
+        
 
         // DIRQ
         if(opcode == Operations.DIRQ.getValue())
         {
-            // Get the list of files in the directory
-            File[] files = filesFolder.listFiles((dir, name) -> {
-                return !name.endsWith(".uploading"); // Exclude files currently being uploaded
-            });
+            if(connections.user_names.containsKey(connectionId) == false)
+            {
+                Packet erPacket = getErrPack((short)6, "User is not logged in");
+                connections.send(connectionId, erPacket);
+            }
+            else{
+                // Get the list of files in the directory
+                File[] files = filesFolder.listFiles();
 
-            StringBuilder fileListBuilder = new StringBuilder();
+                StringBuilder fileListBuilder = new StringBuilder();
+                if(files!= null)
+                {
+                    // Append file names to the directory listing string
+                    for (File file : files) {
+                        fileListBuilder.append(file.getName()).append("\0"); // Separate file names with null byte
+                    }
+                }
 
-            // Append file names to the directory listing string
-            for (File file : files) {
-                fileListBuilder.append(file.getName()).append("\0"); // Separate file names with null byte
+                String fileList = fileListBuilder.toString();
+                
+                short blockNum = 1;
+                // Split the file list into chunks of 512 bytes (maximum packet size)
+                while (fileList.length() > 0) {
+                    int endIndex = Math.min(fileList.length(), 512);
+                    String chunk = fileList.substring(0, endIndex);
+                    fileList = fileList.substring(endIndex);
+
+                    // Create and send a DATA packet containing the chunk
+                    Packet dataPacket = getDataPack((short) chunk.length(), blockNum, chunk);
+
+                    connections.send(connectionId, dataPacket);
+                    blockNum++;
+                }
             }
 
-            String fileList = fileListBuilder.toString();
-
-            // Split the file list into chunks of 512 bytes (maximum packet size)
-            while (fileList.length() > 0) {
-                int endIndex = Math.min(fileList.length(), 512);
-                String chunk = fileList.substring(0, endIndex);
-                fileList = fileList.substring(endIndex);
-
-                // Create and send a DATA packet containing the chunk
-                Packet dataPacket = new Packet();
-                dataPacket.setOpcode(Operations.DATA.getValue());
-                dataPacket.setData(chunk);
-
-                connections.send(connectionId, dataPacket);
-            }
             
         }
 
@@ -165,10 +176,10 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             Boolean isExist = false;
 
             // needs to add userName if it doesn't exist
-            for(String name: connections.user_names.keySet()){
+            for(String name: connections.user_names.values()){
 
                 //in case name already exists
-                if(name == userName){
+                if(name.compareTo(userName) == 0){
                     Packet errorPacket = getErrPack((short)(7), "User already exists");
                     isExist = true;
                     connections.send(connectionId, errorPacket);
@@ -176,7 +187,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             }
             // if successful send ACK RQ:
             if(!isExist){
-                connections.user_names.put(userName, true);
+                connections.user_names.put(connectionId, userName);
                 Packet ackPacket = getAckPack((short)0);
                 connections.send(connectionId, ackPacket);
             }
@@ -219,7 +230,6 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         // DISC
         if(opcode == Operations.DISC.getValue()){
 
-            connections.user_names.remove(packet.getUserName());
             Packet ackPacket = getAckPack((short)0);
             connections.send(connectionId, ackPacket);
             connections.disconnect(this.connectionId);
@@ -239,11 +249,6 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         }
         
     }
-
-
-
-    
-
     
 
 
@@ -285,6 +290,17 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         ackPacket.setBlockNumber(blockNum);
 
         return ackPacket;
+    }
+
+    public Packet getDataPack(short packetSize, short blockNum, String data){
+
+        Packet dataPacket = new Packet();
+        dataPacket.setOpcode(Operations.DATA.getValue());
+        dataPacket.setPacketSize(packetSize);
+        dataPacket.setBlockNumber(blockNum);
+        dataPacket.setData(data);
+
+        return dataPacket;
     }
 
 
