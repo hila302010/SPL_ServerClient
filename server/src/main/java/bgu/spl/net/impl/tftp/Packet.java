@@ -6,7 +6,7 @@ public class Packet {
     private String userName;
     private short packetSize;
     private short blockNumber;
-    private String data;
+    private byte[] data;
     private boolean addedOrDeleted;
     private short errorCode;
     private String errMsg;
