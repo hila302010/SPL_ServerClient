@@ -6,6 +6,8 @@ import java.util.Arrays;
 import bgu.spl.net.api.MessageEncoderDecoder;
 import bgu.spl.net.impl.tftp.Packet;
 
+import java.nio.ByteBuffer;
+
 public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
     
 
@@ -25,7 +27,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
         
         // check the operation code
         if (bufferCurrentPosition == 2) { 
-            opcode = ( short ) ((( short ) buffer [0]) << 8 | ( short ) ( buffer [1]) );
+            opcode = ( short ) ((( short ) buffer [0] &  0xFF) << 8 | ( short ) ( buffer [1]) &  0xFF);
             packet.setOpcode(opcode);
 
             if(opcode == Operations.DISC.getValue() || opcode==Operations.DIRQ.getValue()){
@@ -34,7 +36,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
         }
         else if(bufferCurrentPosition == 4 & opcode == Operations.ACK.getValue())
         {
-            short blockNumber = ( short ) ((( short ) buffer [2]) << 8 | ( short ) ( buffer [3]) );
+            short blockNumber = ( short ) ((( short ) buffer [2] &  0xFF) << 8 | ( short ) ( buffer [3]) &  0xFF);
             packet.setBlockNumber(blockNumber);
             return packet;
         }
@@ -42,8 +44,8 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
         else if( opcode == Operations.DATA.getValue()){
             if(bufferCurrentPosition == 6)
             {
-                short packetSize = ( short ) ((( short ) buffer [2]) << 8 | ( short ) ( buffer [3]) );
-                short blockNumber = ( short ) ((( short ) buffer [4]) << 8 | ( short ) ( buffer [5]) );
+                short packetSize = ( short ) ((( short ) buffer [2] &  0xFF) << 8 | ( short ) ( buffer [3] &  0xFF) );
+                short blockNumber = ( short ) ((( short ) buffer [4] &  0xFF) << 8 | ( short ) ( buffer [5] &  0xFF) );
                 packet.setPacketSize(packetSize);
                 packet.setBlockNumber(blockNumber);
             }
@@ -57,7 +59,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
             }
         }
         
-        if(nextByte == 0 && bufferCurrentPosition >= 2) 
+        if(nextByte == 0 && bufferCurrentPosition >= 2 && opcode!=Operations.DATA.getValue()) 
         {
             if(opcode==Operations.RRQ.getValue() || opcode==Operations.WRQ.getValue() || opcode == Operations.DELRQ.getValue())
             {
@@ -98,7 +100,43 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
 
 
     @Override
+    // CHAT GPT
     public byte[] encode(Packet p) {
+        short opcode = p.getOpcode();
+        ByteBuffer buffer = ByteBuffer.allocate(MAX_PACKET_SIZE);
+        buffer.putShort(opcode);
+    
+        if (opcode == Operations.DISC.getValue() || opcode == Operations.DIRQ.getValue()) {
+            // No additional data for DISC or DIRQ
+        } else if (opcode == Operations.ACK.getValue()) {
+            buffer.putShort(p.getBlockNumber());
+        } else if (opcode == Operations.DATA.getValue()) {
+            buffer.putShort(p.getPacketSize());
+            buffer.putShort(p.getBlockNumber());
+            buffer.put(p.getData().getBytes(StandardCharsets.UTF_8));
+        } else if (opcode == Operations.RRQ.getValue() ||
+                   opcode == Operations.WRQ.getValue() ||
+                   opcode == Operations.DELRQ.getValue()) {
+            buffer.put(p.getFileName().getBytes(StandardCharsets.UTF_8));
+            buffer.put((byte) 0); // Null terminator
+        } else if (opcode == Operations.ERROR.getValue()) {
+            buffer.putShort(p.getErrorCode());
+            buffer.put(p.getErrMsg().getBytes(StandardCharsets.UTF_8));
+            buffer.put((byte) 0); // Null terminator
+        } else if (opcode == Operations.LOGRQ.getValue()) {
+            buffer.put(p.getUserName().getBytes(StandardCharsets.UTF_8));
+            buffer.put((byte) 0); // Null terminator
+        } else if (opcode == Operations.BCAST.getValue()) {
+            buffer.put((byte) (p.getAddedOrDeleted() ? 1 : 0));
+            buffer.put(p.getFileName().getBytes(StandardCharsets.UTF_8));
+            buffer.put((byte) 0); // Null terminator
+        }
+    
+        return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
+    }
+
+    
+    /*public byte[] encode(Packet p) {
         
         byte[] output;
         int currIndex = 0;
@@ -205,7 +243,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
 
 
         return null;
-    }
+    }*/
     
     
     public byte[] mergeByteArr(byte[] baseArr, byte[] arrToAdd) {
@@ -232,3 +270,6 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
     }
     
 }
+
+ 
+ 

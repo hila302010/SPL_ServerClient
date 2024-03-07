@@ -2,6 +2,7 @@ package bgu.spl.net.srv;
 
 import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 import bgu.spl.net.impl.tftp.TftpProtocol;
+import bgu.spl.net.impl.tftp.TftpConnections;
 import java.io.Closeable;
 import java.util.function.Supplier;
 
@@ -23,9 +24,10 @@ public interface Server<T> extends Closeable {
     public static <T> Server<T>  threadPerClient(
             int port,
             Supplier<TftpProtocol > protocolFactory,
-            Supplier<TftpEncoderDecoder > encoderDecoderFactory) {
+            Supplier<TftpEncoderDecoder> encoderDecoderFactory,
+            Supplier<TftpConnections<T>> connectionsFactory) {
 
-        return new BaseServer<T>(port, protocolFactory, encoderDecoderFactory) {
+        return new BaseServer<T>(port, protocolFactory, encoderDecoderFactory, connectionsFactory) {
             @Override
             protected void execute(BlockingConnectionHandler<T>  handler) {
                 new Thread(handler).start();

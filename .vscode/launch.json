@@ -8,7 +8,7 @@
             "type": "java",
             "name": "Launch EchoServer",
             "request": "launch",
-            "mainClass": "bgu.spl.net.impl.echo.EchoServer",
+            "mainClass": "bgu.spl.net.impl.tftp.TftpServer",
             "projectName": "server",
             "preLaunchTask": "server compile"
         },
