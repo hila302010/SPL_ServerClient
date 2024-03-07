@@ -1,24 +1,19 @@
 package bgu.spl.net.impl.tftp;
 
+import bgu.spl.net.srv.BlockingConnectionHandler;
 import bgu.spl.net.srv.ConnectionHandler;
 import bgu.spl.net.srv.Connections;
 
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
-/*class Holder<T>{
-   public static ConcurrentHashMap<Integer, ConnectionHandler<T>> connectionHandlers = new ConcurrentHashMap<>();
-}*/
-
-/*class UserNames{
-     ConcurrentHashMap<String, Boolean> user_names = new ConcurrentHashMap<>();
-}*/
 
 
 public class TftpConnections<T> implements Connections<T> {
     
     public ConcurrentHashMap<Integer, ConnectionHandler<T>> connectionHandlers = new ConcurrentHashMap<>();
-    public ConcurrentHashMap<String, Boolean> user_names = new ConcurrentHashMap<>();
+    public ConcurrentHashMap<Integer, String> user_names = new ConcurrentHashMap<>();
 
     
     @Override
@@ -30,9 +25,9 @@ public class TftpConnections<T> implements Connections<T> {
     @Override
     public boolean send(int connectionId, T msg) {
         // TODO: Implement sending message to the specified connection
-        ConnectionHandler<T> handler = connectionHandlers.get(connectionId);
+        BlockingConnectionHandler<T> handler = (BlockingConnectionHandler<T>) connectionHandlers.get(connectionId);
         if (handler != null) {
-            handler.send(msg);
+            handler.packetQueue.offer(msg);
             return true;
         }
         return false; // Placeholder return
@@ -41,9 +36,9 @@ public class TftpConnections<T> implements Connections<T> {
     @Override
     public void disconnect(int connectionId) {
         // TODO: Implement disconnection handling
-        //מיפוי ID מול קונקשן הנדלר
-        // להוריד מהמיפוי
         connectionHandlers.remove(connectionId);
+        if(user_names.containsKey(connectionId))
+            user_names.remove(connectionId);
         
     }
 }
