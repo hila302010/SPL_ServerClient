@@ -36,7 +36,7 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
             in = new BufferedInputStream(sock.getInputStream());
             out = new BufferedOutputStream(sock.getOutputStream());
 
-            connections.connectionHandlers.put(connectionId, this);
+            connections.connect(connectionId, this);
             protocol.start(connectionId, (TftpConnections<Packet>)connections);
             while (!protocol.shouldTerminate() && connected && (read = in.read()) >= 0) {
                 Packet nextMessage = encdec.decodeNextByte((byte) read);
