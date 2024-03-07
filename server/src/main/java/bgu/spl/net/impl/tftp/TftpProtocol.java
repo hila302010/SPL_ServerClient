@@ -44,7 +44,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         short opcode = packet.getOpcode();
 
         // Check if the user is connected, if he isnt every action exept logrq result an error
-        if(opcode != Operations.LOGRQ.getValue() && connections.user_names.containsKey(connectionId) == false)
+        if(opcode != Operations.LOGRQ.getValue()  && opcode != Operations.DISC.getValue() && connections.user_names.containsKey(connectionId) == false)
         {
             Packet erPacket = getErrPack((short)6, "User is not logged in");
             connections.send(connectionId, erPacket);
