@@ -8,6 +8,8 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler<T> {
 
@@ -19,6 +21,7 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     private BufferedOutputStream out;
     private volatile boolean connected = true;
     private int connectionId;
+    public BlockingQueue<T> packetQueue;
 
     public BlockingConnectionHandler(Socket sock, TftpEncoderDecoder reader, TftpProtocol protocol, TftpConnections<T> connections, int connectionId) {
         this.sock = sock;
@@ -36,12 +39,21 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
             in = new BufferedInputStream(sock.getInputStream());
             out = new BufferedOutputStream(sock.getOutputStream());
 
+            packetQueue = new LinkedBlockingQueue<>();
+
             connections.connect(connectionId, this);
             protocol.start(connectionId, (TftpConnections<Packet>)connections);
             while (!protocol.shouldTerminate() && connected && (read = in.read()) >= 0) {
                 Packet nextMessage = encdec.decodeNextByte((byte) read);
                 if (nextMessage != null) {
                     protocol.process((Packet) nextMessage);
+                    encdec.reset();
+                }
+
+                while(!packetQueue.isEmpty())
+                {
+                    T packet = packetQueue.poll();
+                    send(packet);
                 }
                 
             }

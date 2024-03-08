@@ -8,9 +8,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import bgu.spl.net.api.BidiMessagingProtocol;
 import bgu.spl.net.srv.BlockingConnectionHandler;
@@ -26,13 +25,13 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
     private TftpConnections<Packet> connections;
     private static final String FILES_FOLDER_PATH = "./server/Files/";
     private File filesFolder;
-    private BlockingQueue<Packet> packetsToSend;
 
     private String currFileNameWRQ;
     private final Short MAX_PACKET_SIZE = (short)512;
 
     private List<byte[]> fileChunksRRQ;
 
+    
     
     
 
@@ -55,11 +54,125 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         // TODO implement this
 
         short opcode = packet.getOpcode();
-        // -------------Check if the user is connected, if he isnt every action exept logrq result an error--------------------------
+
+        // Check if the user is connected, if he isnt every action exept logrq and disconnect result an error
+        if(opcode != Operations.LOGRQ.getValue()  && opcode != Operations.DISC.getValue() && connections.user_names.containsKey(connectionId) == false)
+        {
+            Packet erPacket = getErrPack((short)6, "User is not logged in");
+            connections.send(connectionId, erPacket);
+        }
+        else{
+            
+            // RRQ
+            if (opcode == Operations.RRQ.getValue())
+                readReq(packet);
+
+            // WRQ
+            if(opcode == Operations.WRQ.getValue())
+                writeReq(packet);
+            
+            // DIRQ
+            if(opcode == Operations.DIRQ.getValue())
+                directoryListenReq(packet);
+
+
+          // ACK
+          else if(opcode == Operations.ACK.getValue()){
+              if(fileChunksRRQ != null){
+                  Short blockNum = packet.getBlockNumber();
+                  Short newBlockNum = (short)((int)blockNum + 1);
+
+                  byte[] nextChunk = fileChunksRRQ.get(newBlockNum);
+                  if(nextChunk != null){
+                      Packet dataPack = getDataPack((short)nextChunk.length, newBlockNum, nextChunk);
+                      connections.send(connectionId, dataPack);
+            }
+
+            // LOGRQ
+            if(opcode == Operations.LOGRQ.getValue())
+                loginReq(packet);
+            
+            // DELRQ
+            if(opcode == Operations.DELRQ.getValue())
+                deleteReq(packet);
+            
+
+
+                //// how do we handle this?????
+            if(opcode == Operations.BCAST.getValue())
+            {
+                
+            }
+            if(opcode == Operations.ERROR.getValue())
+            {
+                
+            }
+            //DATA
+         if(opcode == Operations.DATA.getValue()){
+            if(this.currFileNameWRQ != null){
+
+                short packetSize = packet.getPacketSize();
+                short blockNumber = packet.getBlockNumber();
+                byte[] data = packet.getData();
+
+                try{
+                    FileOutputStream fos = new FileOutputStream(FILES_FOLDER_PATH + this.currFileNameWRQ, true);
+
+                    fos.write(data, 0, (int)packetSize);
+
+                    fos.close();
+                }
+                catch (IOException e){};
+
+                Packet ackPacket = getAckPack(blockNumber);
+                connections.send(connectionId, ackPacket);
+
+                if(packetSize < MAX_PACKET_SIZE){
+                    this.currFileNameWRQ = null;
+                }
+            }
+            if(opcode == Operations.ACK.getValue())
+            {
+
+            }
+
+            // DISC
+            if(opcode == Operations.DISC.getValue()){
+
+                Packet ackPacket = getAckPack((short)0);
+                connections.send(connectionId, ackPacket);
+                connections.disconnect(this.connectionId);
+                shouldTerminate = true;
+
+            }
+        }
+
         
+    }
 
+    }
+  
+    public void writeReq(Packet packet)
+    {
+      // WRQ
+        String fileName = packet.getFileName();
+        boolean fileExists = checkIfFileInFolder(fileName,filesFolder);
 
-        // RRQ
+        if (fileExists) {
+
+            Packet errorPacket = getErrPack((short)(5), "File already exists");
+            connections.send(connectionId, errorPacket);
+
+        } else {
+            this.currFileNameWRQ = fileName;
+
+            Packet ackPacket = getAckPack((short)0);
+            connections.send(connectionId, ackPacket);
+        }
+    }
+  
+    public void readReq(Packet packet)
+    {
         if (opcode == Operations.RRQ.getValue()) {
             String fileName = packet.getFileName();
 
@@ -109,200 +222,96 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                 }
             }
         }
+    }
+    
+    public void deleteReq(Packet packet)
+    {
+        // get file to delete
+        String fileNameToDelete = packet.getFileName();
+        File fileToDelete = new File(filesFolder, fileNameToDelete);
 
-        // ACK
-        else if(opcode == Operations.ACK.getValue()){
-            if(fileChunksRRQ != null){
-                Short blockNum = packet.getBlockNumber();
-                Short newBlockNum = (short)((int)blockNum + 1);
-
-                byte[] nextChunk = fileChunksRRQ.get(newBlockNum);
-                if(nextChunk != null){
-                    Packet dataPack = getDataPack((short)nextChunk.length, newBlockNum, nextChunk);
-                    connections.send(connectionId, dataPack);
+        if (fileToDelete.exists()) {
+            if (fileToDelete.delete()) {
+                // File deletion successful, send broadcast
+                Packet broadcastPacket = new Packet();
+                broadcastPacket.setOpcode(Operations.BCAST.getValue());
+                broadcastPacket.setFileName(fileNameToDelete);
+                broadcastPacket.setAddedOrDeleted(false);
+                
+                // send broadcast to all logged in users
+                for (Integer id : connections.connectionHandlers.keySet()) {
+                    connections.send(id, broadcastPacket);
                 }
-            }
-        }
-
-
-
-        // WRQ
-        else if(opcode == Operations.WRQ.getValue()){
-
-            String fileName = packet.getFileName();
-            boolean fileExists = checkIfFileInFolder(fileName,filesFolder);
-
-            if (fileExists) {
-
-                Packet errorPacket = getErrPack((short)(5), "File already exists");
-                connections.send(connectionId, errorPacket);
-
-            } else {
-                this.currFileNameWRQ = fileName;
-
+                // send ACK packet to client
                 Packet ackPacket = getAckPack((short)0);
                 connections.send(connectionId, ackPacket);
+
+            } else {
+                // File deletion failed
+                Packet errorPacket = getErrPack((short) 2, "Failed to delete file");
+                connections.send(connectionId, errorPacket);
             }
+        } 
+        else { // File does not exist
+            Packet errorPacket = getErrPack((short) 1, "File not found");
+            connections.send(connectionId, errorPacket);
         }
+    }
 
-
-
-        //DATA
-        if(opcode == Operations.DATA.getValue()){
-            if(this.currFileNameWRQ != null){
-
-                short packetSize = packet.getPacketSize();
-                short blockNumber = packet.getBlockNumber();
-                byte[] data = packet.getData();
-    
-                try{
-                    FileOutputStream fos = new FileOutputStream(FILES_FOLDER_PATH + this.currFileNameWRQ, true);
-    
-                    fos.write(data, 0, (int)packetSize);
-    
-                    fos.close();
-                }
-                catch (IOException e){};
-    
-                Packet ackPacket = getAckPack(blockNumber);
-                connections.send(connectionId, ackPacket);
-    
-                if(packetSize < MAX_PACKET_SIZE){
-                    this.currFileNameWRQ = null;
-                }
-            }
-
-
-
-        }
-
+    public void loginReq(Packet packet)
+    {
         
+        String userName = packet.getUserName();
+        Boolean isExist = false;
 
+        // needs to add userName if it doesn't exist
+        for(String name: connections.user_names.values()){
 
-        // DIRQ
-        if(opcode == Operations.DIRQ.getValue())
+            //in case name already exists
+            if(name.compareTo(userName) == 0){
+                Packet errorPacket = getErrPack((short)(7), "User already exists");
+                isExist = true;
+                connections.send(connectionId, errorPacket);
+            }
+        }
+        // if successful send ACK RQ:
+        if(!isExist){
+            connections.user_names.put(connectionId, userName);
+            Packet ackPacket = getAckPack((short)0);
+            connections.send(connectionId, ackPacket);
+        }
+    }
+
+    public void directoryListenReq(Packet packet)
+    {
+        // Get the list of files in the directory
+        File[] files = filesFolder.listFiles();
+
+        StringBuilder fileListBuilder = new StringBuilder();
+        if(files!= null)
         {
-            // Get the list of files in the directory
-            File[] files = filesFolder.listFiles((dir, name) -> {
-                return !name.endsWith(".uploading"); // Exclude files currently being uploaded
-            });
-
-            StringBuilder fileListBuilder = new StringBuilder();
-
             // Append file names to the directory listing string
             for (File file : files) {
                 fileListBuilder.append(file.getName()).append("\0"); // Separate file names with null byte
             }
-
-            String fileList = fileListBuilder.toString();
-
-            // Split the file list into chunks of 512 bytes (maximum packet size)
-            while (fileList.length() > 0) {
-                int endIndex = Math.min(fileList.length(), 512);
-                String chunk = fileList.substring(0, endIndex);
-                fileList = fileList.substring(endIndex);
-
-                // Create and send a DATA packet containing the chunk
-                Packet dataPacket = new Packet();
-                dataPacket.setOpcode(Operations.DATA.getValue());
-                dataPacket.setData(chunk);
-
-                connections.send(connectionId, dataPacket);
-            }
-            
         }
 
-
-
-
-        // LOGRQ
-        if(opcode == Operations.LOGRQ.getValue()){
-
-            String userName = packet.getUserName();
-            Boolean isExist = false;
-
-            // needs to add userName if it doesn't exist
-            for(String name: connections.user_names.keySet()){
-
-                //in case name already exists
-                if(name == userName){
-                    Packet errorPacket = getErrPack((short)(7), "User already exists");
-                    isExist = true;
-                    connections.send(connectionId, errorPacket);
-                }
-            }
-            // if successful send ACK RQ:
-            if(!isExist){
-                connections.user_names.put(userName, true);
-                Packet ackPacket = getAckPack((short)0);
-                connections.send(connectionId, ackPacket);
-            }
-        }
-
-
-        // DELRQ
-        if(opcode == Operations.DELRQ.getValue()){
-
-            // get file to delete
-            String fileNameToDelete = packet.getFileName();
-            File fileToDelete = new File(filesFolder, fileNameToDelete);
-
-            if (fileToDelete.exists()) {
-                if (fileToDelete.delete()) {
-                    // File deletion successful, send broadcast
-                    Packet broadcastPacket = new Packet();
-                    broadcastPacket.setOpcode(Operations.BCAST.getValue());
-                    broadcastPacket.setFileName(fileNameToDelete);
-                    broadcastPacket.setAddedOrDeleted(true);
-                    
-                    for (Integer id : connections.connectionHandlers.keySet()) {
-                        connections.send(id, broadcastPacket);
-                    }
-                } else {
-                    // File deletion failed
-                    Packet errorPacket = getErrPack((short) 2, "Failed to delete file");
-                    connections.send(connectionId, errorPacket);
-                }
-            } 
-            else { // File does not exist
-                Packet errorPacket = getErrPack((short) 1, "File not found");
-                connections.send(connectionId, errorPacket);
-            }
-        }
-
-
-
-
-        // DISC
-        if(opcode == Operations.DISC.getValue()){
-
-            connections.user_names.remove(packet.getUserName());
-            Packet ackPacket = getAckPack((short)0);
-            connections.send(connectionId, ackPacket);
-            connections.disconnect(this.connectionId);
-            shouldTerminate = true;
-
-        }
-
-
-        // can it even happen ???
-        if(opcode == Operations.BCAST.getValue())
-        {
-            
-        }
-        if(opcode == Operations.ERROR.getValue())
-        {
-            
-        }
+        String fileList = fileListBuilder.toString();
         
+        short blockNum = 1;
+        // Split the file list into chunks of 512 bytes (maximum packet size)
+        while (fileList.length() > 0) {
+            int endIndex = Math.min(fileList.length(), 512);
+            String chunk = fileList.substring(0, endIndex);
+            fileList = fileList.substring(endIndex);
+
+            // Create and send a DATA packet containing the chunk
+            Packet dataPacket = getDataPack((short) chunk.length(), blockNum, chunk.getBytes());
+
+            connections.send(connectionId, dataPacket);
+            blockNum++;
+        }
     }
-
-
-
-    
-
-    
-
 
 
     public boolean checkIfFileInFolder(String fileName, File filesFolder){
@@ -343,6 +352,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
 
         return ackPacket;
     }
+
 
     public Packet getDataPack(short packetSize,short blockNumber, byte[] data){
 
