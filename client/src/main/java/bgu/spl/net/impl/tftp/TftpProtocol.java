@@ -14,9 +14,12 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
     @Override
     public Packet process(Packet packet) {
         // TODO implement this
+        
 
 
-        return packet;
+
+        // no response is expected
+        return null;
 
         
     }
