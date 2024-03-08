@@ -23,7 +23,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
     private boolean shouldTerminate;
     private int connectionId;
     private TftpConnections<Packet> connections;
-    private static final String FILES_FOLDER_PATH = "./server/Files/";
+    private static final String FILES_FOLDER_PATH = "/home/hila/Projects/Project3/SPL_Project3/server/Files";
     private File filesFolder;
 
     private String currFileNameWRQ;
@@ -61,8 +61,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             Packet erPacket = getErrPack((short)6, "User is not logged in");
             connections.send(connectionId, erPacket);
         }
-        else{
-            
+        else{    
             // RRQ
             if (opcode == Operations.RRQ.getValue())
                 readReq(packet);
@@ -75,18 +74,9 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             if(opcode == Operations.DIRQ.getValue())
                 directoryListenReq(packet);
 
-
-          // ACK
-          else if(opcode == Operations.ACK.getValue()){
-              if(fileChunksRRQ != null){
-                  Short blockNum = packet.getBlockNumber();
-                  Short newBlockNum = (short)((int)blockNum + 1);
-
-                  byte[] nextChunk = fileChunksRRQ.get(newBlockNum);
-                  if(nextChunk != null){
-                      Packet dataPack = getDataPack((short)nextChunk.length, newBlockNum, nextChunk);
-                      connections.send(connectionId, dataPack);
-            }
+            // ACK
+            if(opcode == Operations.ACK.getValue())
+              ackReq(packet);
 
             // LOGRQ
             if(opcode == Operations.LOGRQ.getValue())
@@ -95,8 +85,6 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             // DELRQ
             if(opcode == Operations.DELRQ.getValue())
                 deleteReq(packet);
-            
-
 
                 //// how do we handle this?????
             if(opcode == Operations.BCAST.getValue())
@@ -108,33 +96,8 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                 
             }
             //DATA
-         if(opcode == Operations.DATA.getValue()){
-            if(this.currFileNameWRQ != null){
-
-                short packetSize = packet.getPacketSize();
-                short blockNumber = packet.getBlockNumber();
-                byte[] data = packet.getData();
-
-                try{
-                    FileOutputStream fos = new FileOutputStream(FILES_FOLDER_PATH + this.currFileNameWRQ, true);
-
-                    fos.write(data, 0, (int)packetSize);
-
-                    fos.close();
-                }
-                catch (IOException e){};
-
-                Packet ackPacket = getAckPack(blockNumber);
-                connections.send(connectionId, ackPacket);
-
-                if(packetSize < MAX_PACKET_SIZE){
-                    this.currFileNameWRQ = null;
-                }
-            }
-            if(opcode == Operations.ACK.getValue())
-            {
-
-            }
+            if(opcode == Operations.DATA.getValue())
+                dataReq(packet);
 
             // DISC
             if(opcode == Operations.DISC.getValue()){
@@ -146,12 +109,9 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
 
             }
         }
-
-        
     }
 
-    }
-  
+    
     public void writeReq(Packet packet)
     {
       // WRQ
@@ -170,58 +130,100 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             connections.send(connectionId, ackPacket);
         }
     }
+
+    public void ackReq(Packet packet)
+    {
+        if(fileChunksRRQ != null)
+        {
+            Short blockNum = packet.getBlockNumber();
+            Short newBlockNum = (short)((int)blockNum + 1);
+
+            byte[] nextChunk = fileChunksRRQ.get(newBlockNum);
+            if(nextChunk != null){
+                Packet dataPack = getDataPack((short)nextChunk.length, newBlockNum, nextChunk);
+                connections.send(connectionId, dataPack);
+            }
+        }
+    }
+
+    public void dataReq(Packet packet)
+    {
+        if(this.currFileNameWRQ != null)
+        {
+
+            short packetSize = packet.getPacketSize();
+            short blockNumber = packet.getBlockNumber();
+            byte[] data = packet.getData();
+
+            try{
+                FileOutputStream fos = new FileOutputStream(FILES_FOLDER_PATH + this.currFileNameWRQ, true);
+
+                fos.write(data, 0, (int)packetSize);
+
+                fos.close();
+            }
+            catch (IOException e){};
+
+            Packet ackPacket = getAckPack(blockNumber);
+            connections.send(connectionId, ackPacket);
+
+            if(packetSize < MAX_PACKET_SIZE){
+               
+                this.currFileNameWRQ = null;
+            }
+        }
+    }
   
     public void readReq(Packet packet)
     {
-        if (opcode == Operations.RRQ.getValue()) {
-            String fileName = packet.getFileName();
+        String fileName = packet.getFileName();
 
-            // Check if the file exists in the Files folder
-            File file = new File(FILES_FOLDER_PATH + "/" + fileName);
+        // Check if the file exists in the Files folder
+        File file = new File(FILES_FOLDER_PATH + "/" + fileName);
 
-            if (!file.exists()) { //If the file doesn't exists we will send en error packet
-                Packet errorPacket = getErrPack((short) 1, "File not found");
-                connections.send(connectionId, errorPacket);
-                return;
+        if (!file.exists()) { //If the file doesn't exists we will send en error packet
+            Packet errorPacket = getErrPack((short) 1, "File not found");
+            connections.send(connectionId, errorPacket);
+            return;
 
-            } else { //If the file exists - we read the it into chunks of 512 bytes 
-                //and store it in fileChunksRRQ field
-                try (FileInputStream fis = new FileInputStream(file)) {
-                    fileChunksRRQ = new ArrayList<>();
-                    byte[] buffer = new byte[512];
-                    int bytesRead = 0;
-                    while ((bytesRead = fis.read(buffer)) != -1) {
-                        byte[] chunk = new byte[bytesRead];
-                        System.arraycopy(buffer, 0, chunk, 0, bytesRead);
-                        fileChunksRRQ.add(chunk);
-                    }
-                    //Send the first chunk
-                    byte[] dataToSend = fileChunksRRQ.get(0);
-
-                    if(dataToSend == null || dataToSend.length == 0){
-                        short zero = 0;
-                        byte[] empty = new byte[0];
-                        Packet dataPack = getDataPack(zero ,zero, empty);
-                        fileChunksRRQ = null;
-                        connections.send(connectionId, dataPack);
-                    }
-                    else{ //sent the first chunt in the list as block 1
-                        Packet dataPack = getDataPack((short)dataToSend.length, (short)1, fileChunksRRQ.get(0));
-                        if(fileChunksRRQ.size() == 1){
-                            fileChunksRRQ = null;
-                        }
-                        connections.send(connectionId, dataPack);
-                    }
-                    
-
-
-                } catch (IOException e) {
-                    // Error reading the file, send an error packet
-                    Packet errorPacket = getErrPack((short) 2, "Error reading file");
-                    connections.send(connectionId, errorPacket);
+        } else { //If the file exists - we read the it into chunks of 512 bytes 
+            //and store it in fileChunksRRQ field
+            try (FileInputStream fis = new FileInputStream(file)) {
+                fileChunksRRQ = new ArrayList<>();
+                byte[] buffer = new byte[512];
+                int bytesRead = 0;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    byte[] chunk = new byte[bytesRead];
+                    System.arraycopy(buffer, 0, chunk, 0, bytesRead);
+                    fileChunksRRQ.add(chunk);
                 }
+                //Send the first chunk
+                byte[] dataToSend = fileChunksRRQ.get(0);
+
+                if(dataToSend == null || dataToSend.length == 0){
+                    short zero = 0;
+                    byte[] empty = new byte[0];
+                    Packet dataPack = getDataPack(zero ,zero, empty);
+                    fileChunksRRQ = null;
+                    connections.send(connectionId, dataPack);
+                }
+                else{ //sent the first chunt in the list as block 1
+                    Packet dataPack = getDataPack((short)dataToSend.length, (short)1, fileChunksRRQ.get(0));
+                    if(fileChunksRRQ.size() == 1){
+                        fileChunksRRQ = null;
+                    }
+                    connections.send(connectionId, dataPack);
+                }
+                
+
+
+            } catch (IOException e) {
+                // Error reading the file, send an error packet
+                Packet errorPacket = getErrPack((short) 2, "Error reading file");
+                connections.send(connectionId, errorPacket);
             }
         }
+        
     }
     
     public void deleteReq(Packet packet)
