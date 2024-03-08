@@ -43,6 +43,7 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
                 if (nextMessage != null) {
                     protocol.process((Packet) nextMessage);
                 }
+                
             }
 
         } catch (IOException ex) {
