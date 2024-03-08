@@ -44,7 +44,7 @@ public class Packet {
         this.blockNumber = blockNumber;
     }
 
-    public void setData(String data) {
+    public void setData(byte[] data) {
         this.data = data;
     }
 
@@ -81,7 +81,7 @@ public class Packet {
         return blockNumber;
     }
 
-    public String getData() {
+    public byte[] getData() {
         return data;
     }
 

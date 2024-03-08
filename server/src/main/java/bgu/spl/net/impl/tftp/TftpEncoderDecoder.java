@@ -59,7 +59,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
             {
                 // read from the buffer all the bytes from 6 to packet.getPacketSize + 6
                 // convert the bytes to string
-                String data = new String(buffer, 6, packet.getPacketSize(), StandardCharsets.UTF_8);
+                byte[] data = Arrays.copyOfRange(buffer, 6, 6 + packet.getPacketSize());;
                 packet.setData(data);
                 bufferCurrentPosition = 0;
                 opcode = 0;
@@ -120,7 +120,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
         } else if (opcode == Operations.DATA.getValue()) {
             buffer.putShort(p.getPacketSize());
             buffer.putShort(p.getBlockNumber());
-            buffer.put(p.getData().getBytes(StandardCharsets.UTF_8));
+            buffer.put(p.getData());
         } else if (opcode == Operations.RRQ.getValue() ||
                    opcode == Operations.WRQ.getValue() ||
                    opcode == Operations.DELRQ.getValue()) {
