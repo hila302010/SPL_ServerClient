@@ -43,7 +43,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
 
         short opcode = packet.getOpcode();
 
-        // Check if the user is connected, if he isnt every action exept logrq result an error
+        // Check if the user is connected, if he isnt every action exept logrq and disconnect result an error
         if(opcode != Operations.LOGRQ.getValue()  && opcode != Operations.DISC.getValue() && connections.user_names.containsKey(connectionId) == false)
         {
             Packet erPacket = getErrPack((short)6, "User is not logged in");
@@ -72,6 +72,8 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                 deleteReq(packet);
             
 
+
+                //// how do we handle this?????
             if(opcode == Operations.BCAST.getValue())
             {
                 
@@ -79,6 +81,14 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             if(opcode == Operations.ERROR.getValue())
             {
                 
+            }
+            if(opcode == Operations.DATA.getValue())
+            {
+
+            }
+            if(opcode == Operations.ACK.getValue())
+            {
+
             }
 
             // DISC
@@ -88,7 +98,6 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                 connections.send(connectionId, ackPacket);
                 connections.disconnect(this.connectionId);
                 shouldTerminate = true;
-
             }
         }
 
@@ -172,31 +181,36 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
     
     public void deleteReq(Packet packet)
     {
-         // get file to delete
-         String fileNameToDelete = packet.getFileName();
-         File fileToDelete = new File(filesFolder, fileNameToDelete);
+        // get file to delete
+        String fileNameToDelete = packet.getFileName();
+        File fileToDelete = new File(filesFolder, fileNameToDelete);
 
-         if (fileToDelete.exists()) {
-             if (fileToDelete.delete()) {
-                 // File deletion successful, send broadcast
-                 Packet broadcastPacket = new Packet();
-                 broadcastPacket.setOpcode(Operations.BCAST.getValue());
-                 broadcastPacket.setFileName(fileNameToDelete);
-                 broadcastPacket.setAddedOrDeleted(true);
-                 
-                 for (Integer id : connections.connectionHandlers.keySet()) {
-                     connections.send(id, broadcastPacket);
-                 }
-             } else {
-                 // File deletion failed
-                 Packet errorPacket = getErrPack((short) 2, "Failed to delete file");
-                 connections.send(connectionId, errorPacket);
-             }
-         } 
-         else { // File does not exist
-             Packet errorPacket = getErrPack((short) 1, "File not found");
-             connections.send(connectionId, errorPacket);
-         }
+        if (fileToDelete.exists()) {
+            if (fileToDelete.delete()) {
+                // File deletion successful, send broadcast
+                Packet broadcastPacket = new Packet();
+                broadcastPacket.setOpcode(Operations.BCAST.getValue());
+                broadcastPacket.setFileName(fileNameToDelete);
+                broadcastPacket.setAddedOrDeleted(false);
+                
+                // send broadcast to all logged in users
+                for (Integer id : connections.connectionHandlers.keySet()) {
+                    connections.send(id, broadcastPacket);
+                }
+                // send ACK packet to client
+                Packet ackPacket = getAckPack((short)0);
+                connections.send(connectionId, ackPacket);
+
+            } else {
+                // File deletion failed
+                Packet errorPacket = getErrPack((short) 2, "Failed to delete file");
+                connections.send(connectionId, errorPacket);
+            }
+        } 
+        else { // File does not exist
+            Packet errorPacket = getErrPack((short) 1, "File not found");
+            connections.send(connectionId, errorPacket);
+        }
     }
 
     public void loginReq(Packet packet)

@@ -71,7 +71,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
         {
             if(opcode==Operations.RRQ.getValue() || opcode==Operations.WRQ.getValue() || opcode == Operations.DELRQ.getValue())
             {
-                String fileName = new String(buffer, 2, bufferCurrentPosition-2, StandardCharsets.UTF_8);
+                String fileName = new String(buffer, 2, bufferCurrentPosition-3, StandardCharsets.UTF_8);
                 packet.setFileName(fileName);
             }
             else if(opcode==Operations.ERROR.getValue())
@@ -79,20 +79,20 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
                 if(bufferCurrentPosition>=4) // in case the error code is 0- don't stop
                 {
                     short errorCode = ( short ) ((( short ) buffer [2]) << 8 | ( short ) ( buffer [3]) );
-                    String errorMsg = new String(buffer, 4, bufferCurrentPosition-4, StandardCharsets.UTF_8);
+                    String errorMsg = new String(buffer, 4, bufferCurrentPosition-5, StandardCharsets.UTF_8);
                     packet.setErrorCode(errorCode);
                     packet.setErrMsg(errorMsg);
                 }
             }
             else if(opcode == Operations.LOGRQ.getValue())
             {
-                String userName = new String(buffer, 2, bufferCurrentPosition-2, StandardCharsets.UTF_8);
+                String userName = new String(buffer, 2, bufferCurrentPosition-3, StandardCharsets.UTF_8);
                 packet.setUserName(userName);
             }
             else if(opcode == Operations.BCAST.getValue() && bufferCurrentPosition > 2)
             {
                 boolean addedDeleted = buffer[2] != 0;
-                String fileName = new String(buffer, 3, bufferCurrentPosition-3, StandardCharsets.UTF_8);
+                String fileName = new String(buffer, 3, bufferCurrentPosition-4, StandardCharsets.UTF_8);
                 packet.setFileName(fileName);
                 packet.setAddedOrDeleted(addedDeleted);
             }
