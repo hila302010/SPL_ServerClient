@@ -55,8 +55,6 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
                     T packet = packetQueue.poll();
                     send(packet);
                 }
-
-                
                 
             }
 

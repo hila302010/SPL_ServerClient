@@ -24,7 +24,6 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
     public Packet decodeNextByte(byte nextByte) {
         // TODO: implement this
 
-        
         buffer[bufferCurrentPosition++] = nextByte; // push into the buffer
         
         // check the operation code
@@ -55,7 +54,8 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
             {
                 // read from the buffer all the bytes from 6 to packet.getPacketSize + 6
                 // convert the bytes to string
-                byte[] data = Arrays.copyOfRange(buffer, 6, 6 + packet.getPacketSize());;
+
+                byte[] data = Arrays.copyOfRange(buffer, 6, 6 + packet.getPacketSize());
                 packet.setData(data);
                 return packet;
             }
