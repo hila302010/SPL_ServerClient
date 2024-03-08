@@ -23,7 +23,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
     private boolean shouldTerminate;
     private int connectionId;
     private TftpConnections<Packet> connections;
-    private static final String FILES_FOLDER_PATH = "/home/hila/Projects/Project3/SPL_Project3/server/Files";
+    private static final String FILES_FOLDER_PATH = "/home/maayan/Projects/SPL_Project3/server/Files";
     private File filesFolder;
 
     private String currFileNameWRQ;
@@ -133,15 +133,19 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
 
     public void ackReq(Packet packet)
     {
-        if(fileChunksRRQ != null)
-        {
-            Short blockNum = packet.getBlockNumber();
-            Short newBlockNum = (short)((int)blockNum + 1);
 
-            byte[] nextChunk = fileChunksRRQ.get(newBlockNum);
-            if(nextChunk != null){
-                Packet dataPack = getDataPack((short)nextChunk.length, newBlockNum, nextChunk);
-                connections.send(connectionId, dataPack);
+
+        if (fileChunksRRQ != null) {
+            Short blockNum = packet.getBlockNumber();
+            Short newBlockNum = (short) ((int)blockNum + 1);
+
+    
+            if (blockNum < fileChunksRRQ.size()) {
+                byte[] nextChunk = fileChunksRRQ.get(blockNum);
+                if (nextChunk != null) {
+                    Packet dataPack = getDataPack((short) nextChunk.length, newBlockNum, nextChunk);
+                    connections.send(connectionId, dataPack);
+                }
             }
         }
     }
@@ -156,7 +160,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             byte[] data = packet.getData();
 
             try{
-                FileOutputStream fos = new FileOutputStream(FILES_FOLDER_PATH + this.currFileNameWRQ, true);
+                FileOutputStream fos = new FileOutputStream(FILES_FOLDER_PATH + "/" + this.currFileNameWRQ, true);
 
                 fos.write(data, 0, (int)packetSize);
 
@@ -208,7 +212,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                     connections.send(connectionId, dataPack);
                 }
                 else{ //sent the first chunt in the list as block 1
-                    Packet dataPack = getDataPack((short)dataToSend.length, (short)1, fileChunksRRQ.get(0));
+                    Packet dataPack = getDataPack((short)dataToSend.length, (short)1, dataToSend);
                     if(fileChunksRRQ.size() == 1){
                         fileChunksRRQ = null;
                     }
