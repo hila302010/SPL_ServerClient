@@ -15,15 +15,15 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
 
     private final TftpProtocol protocol;
     private final TftpEncoderDecoder encdec;
-    private final TftpConnections<T> connections;
     private final Socket sock;
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private volatile boolean connected = true;
     private int connectionId;
+    private final TftpConnections<T> connections;
     public BlockingQueue<T> packetQueue;
 
-    public BlockingConnectionHandler(Socket sock, TftpEncoderDecoder reader, TftpProtocol protocol, TftpConnections<T> connections, int connectionId) {
+    public BlockingConnectionHandler(Socket sock, TftpEncoderDecoder reader, TftpProtocol protocol, int connectionId , TftpConnections<T> connections) {
         this.sock = sock;
         this.encdec = reader;
         this.protocol = protocol;
@@ -41,8 +41,9 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
 
             packetQueue = new LinkedBlockingQueue<>();
 
-            connections.connect(connectionId, this);
+ 
             protocol.start(connectionId, (TftpConnections<Packet>)connections);
+            
             while (!protocol.shouldTerminate() && connected && (read = in.read()) >= 0) {
                 Packet nextMessage = encdec.decodeNextByte((byte) read);
                 if (nextMessage != null) {

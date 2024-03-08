@@ -23,7 +23,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
     private boolean shouldTerminate;
     private int connectionId;
     private TftpConnections<Packet> connections;
-    private static final String FILES_FOLDER_PATH = "/home/maayan/Projects/SPL_Project3/server/Files";
+    private static final String FILES_FOLDER_PATH = "./Files";
     private File filesFolder;
 
     private String currFileNameWRQ;
@@ -31,9 +31,6 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
 
     private List<byte[]> fileChunksRRQ;
 
-    
-    
-    
 
     @Override
     public void start(int connectionId, Connections<Packet> connections) {
@@ -133,8 +130,6 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
 
     public void ackReq(Packet packet)
     {
-
-
         if (fileChunksRRQ != null) {
             Short blockNum = packet.getBlockNumber();
             Short newBlockNum = (short) ((int)blockNum + 1);
@@ -227,9 +222,10 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                 connections.send(connectionId, errorPacket);
             }
         }
-        
     }
     
+
+
     public void deleteReq(Packet packet)
     {
         // get file to delete
@@ -245,8 +241,8 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                 broadcastPacket.setAddedOrDeleted(false);
                 
                 // send broadcast to all logged in users
-                for (Integer id : connections.connectionHandlers.keySet()) {
-                    connections.send(id, broadcastPacket);
+                for (Integer id : connections.user_names.keySet()) {
+                    connections.connectionHandlers.get(id).send(broadcastPacket);
                 }
                 // send ACK packet to client
                 Packet ackPacket = getAckPack((short)0);
@@ -264,6 +260,8 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         }
     }
 
+
+
     public void loginReq(Packet packet)
     {
         
@@ -275,7 +273,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
 
             //in case name already exists
             if(name.compareTo(userName) == 0){
-                Packet errorPacket = getErrPack((short)(7), "User already exists");
+                Packet errorPacket = getErrPack((short)(7), "The name " + userName + " is Already exists");
                 isExist = true;
                 connections.send(connectionId, errorPacket);
             }
