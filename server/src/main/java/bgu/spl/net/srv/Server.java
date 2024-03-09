@@ -24,10 +24,9 @@ public interface Server<T> extends Closeable {
     public static <T> Server<T>  threadPerClient(
             int port,
             Supplier<TftpProtocol > protocolFactory,
-            Supplier<TftpEncoderDecoder> encoderDecoderFactory,
-            Supplier<TftpConnections<T>> connectionsFactory) {
+            Supplier<TftpEncoderDecoder> encoderDecoderFactory) {
 
-        return new BaseServer<T>(port, protocolFactory, encoderDecoderFactory, connectionsFactory) {
+        return new BaseServer<T>(port, protocolFactory, encoderDecoderFactory) {
             @Override
             protected void execute(BlockingConnectionHandler<T>  handler) {
                 new Thread(handler).start();
