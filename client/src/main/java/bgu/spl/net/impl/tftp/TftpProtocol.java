@@ -85,26 +85,15 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
             Short newBlockNum = (short) ((int)blockNum + 1);
             byte[] dataToSend = KeyBoard.fileChunksWRQclient.get(blockNum);
 
-            // In case the all the blocks already passed we reset this fields
-            if (blockNum >= KeyBoard.fileChunksWRQclient.size() || dataToSend.length == 0) {
-                KeyBoard.fileChunksWRQclient = null;
-                KeyBoard.currFileNameWRQclient = null;
-                System.out.println(KeyBoard.currFileNameWRQclient  + " complete!");
-            }
-
-            
-            // // Edge case
-            // if(dataToSend == null || dataToSend.length == 0){
-            //     short zero = 0;
-            //     byte[] empty = new byte[0];
-            //     Packet dataPack = getDataPack(zero ,zero, empty);
-            //     KeyBoard.fileChunksWRQclient = null;
-            //     KeyBoard.currFileNameWRQclient = null;
-            //     return dataPack;
-            // }
-
 
             if (KeyBoard.fileChunksWRQclient != null) {
+
+                // In case the all the blocks already passed we reset this fields
+                if ((blockNum >= KeyBoard.fileChunksWRQclient.size() || dataToSend.length == 0)) {
+                    KeyBoard.fileChunksWRQclient = null;
+                    KeyBoard.currFileNameWRQclient = null;
+                    System.out.println(KeyBoard.currFileNameWRQclient  + " complete!");
+                }
             
                 if (blockNum < KeyBoard.fileChunksWRQclient.size()) {
                     byte[] nextChunk = KeyBoard.fileChunksWRQclient.get(blockNum);
