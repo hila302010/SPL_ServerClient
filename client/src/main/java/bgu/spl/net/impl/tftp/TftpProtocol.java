@@ -15,7 +15,6 @@ import bgu.spl.net.impl.tftp.KeyBoard;
 public class TftpProtocol implements MessagingProtocol<Packet>  {
 
     private boolean shouldTerminate;
-
     private static final String FILES_FOLDER_PATH = "./";
     private File filesFolder;
 
@@ -24,7 +23,6 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
 
     private List<byte[]> fileChunksRRQ;
     
-
 
     @Override
     public Packet process(Packet packet) {
@@ -38,6 +36,7 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
                 status = "added";
             }
             System.out.println("The file " + packet.getFileName() + " has been " + status);
+            System.out.println();
         }
 
         if(opcode == Operations.ERROR.getValue())
@@ -76,6 +75,11 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
                 }
                 return ackPacket;
             }
+            
+        }
+        if(opcode == Operations.DATA.getValue())
+        {
+            // sending data in WRQ
         }
 
 
@@ -103,7 +107,9 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
                     }
                 }
             }
+            // sending ACK in RRQ
         }
+
 
         // no response is expected
         return null;
@@ -135,6 +141,7 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
 
         return dataPacket;
     }
+
 
     @Override
     public boolean shouldTerminate() {
