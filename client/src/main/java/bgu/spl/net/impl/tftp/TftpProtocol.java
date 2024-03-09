@@ -8,8 +8,6 @@ import bgu.spl.net.api.MessagingProtocol;
 public class TftpProtocol implements MessagingProtocol<Packet>  {
 
     private boolean shouldTerminate;
-    
-
 
     @Override
     public Packet process(Packet packet) {
@@ -19,28 +17,24 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
         if(opcode == Operations.BCAST.getValue())
         {
             System.out.println();
-            shouldTerminate = true;
+            
         }
         if(opcode == Operations.ERROR.getValue())
         {
-            shouldTerminate = true;
+            
         }
         if(opcode == Operations.DATA.getValue())
         {
-            
+            // sending data in WRQ
         }
         if(opcode == Operations.ACK.getValue())
         {
-            
+            // sending ACK in RRQ
         }
+
 
         // no response is expected
         return null;
-    }
-
-    public void SetShouldTerminate(boolean shouldTerminate)
-    {
-        this.shouldTerminate = shouldTerminate;
     }
 
     @Override

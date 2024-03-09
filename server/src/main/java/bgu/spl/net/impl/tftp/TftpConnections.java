@@ -29,14 +29,17 @@ public class TftpConnections<T> implements Connections<T> {
         if (handler != null) {
             try
             {
-                Boolean isLocked = handler.sem.tryAcquire(1000, null);
-                if(isLocked)
-                    handler.packetQueue.offer(msg);
-                else
+                Boolean isLocked = handler.sem.tryAcquire();
+                if(isLocked){
                     handler.send(msg);
+                    handler.sem.release();
+                }
+                else{
+                    handler.packetQueue.offer(msg);
+                }
                 return true;
             }
-            catch(InterruptedException e){}
+            catch(Exception e){}
         }
         return false; // Placeholder return
     }
