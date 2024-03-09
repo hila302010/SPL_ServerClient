@@ -15,9 +15,6 @@ public class TftpClient {
     //TODO: implement the main logic of the client, when using a thread per client the main logic goes here
     public static void main(String[] args) throws IOException {
 
-        // should we handle the packets with a blocking queue?
-        BlockingQueue<Packet> packetsToSend = new LinkedBlockingQueue<>();
-
         Listening listening = new Listening();
         Thread listeningThread = new Thread(listening);
 

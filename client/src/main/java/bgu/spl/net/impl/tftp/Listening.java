@@ -16,6 +16,7 @@ public class Listening implements Runnable{
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private boolean serverConnected = false;
+    public Object waitForServer = new Object();
 
 
     @Override
@@ -34,8 +35,12 @@ public class Listening implements Runnable{
             while ((read = in.read()) >= 0) {
                 Packet nextMessage = encdec.decodeNextByte((byte) read);
                 if (nextMessage != null) {
-                    protocol.process((Packet) nextMessage);
+                    Packet packetToSend = protocol.process((Packet) nextMessage);
                     encdec.reset();
+                    if(packetToSend != null)
+                        send(nextMessage);
+                    else
+                        waitForServer.notify();
                 }
             }
         }catch(Exception e){}

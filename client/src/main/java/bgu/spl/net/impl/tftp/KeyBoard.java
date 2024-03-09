@@ -23,6 +23,10 @@ public class KeyBoard implements Runnable{
                 if(packet!=null)
                 {
                     listening.send(packet);
+                    try{
+                        listening.waitForServer.wait(); // wait for listening thread to notiffy that the server finished handeling request
+                    }catch(InterruptedException e){}
+
                 }
 
             }
