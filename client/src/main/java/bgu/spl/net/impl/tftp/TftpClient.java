@@ -34,5 +34,10 @@ public class TftpClient {
             System.out.println("Server connection failed. Exiting...");
             System.exit(1);
         }
+        // Check if the server connection failed
+        if (!listening.shouldTerminate()) {
+            System.out.println("Exiting...");
+            System.exit(1);
+        }
     }
 }

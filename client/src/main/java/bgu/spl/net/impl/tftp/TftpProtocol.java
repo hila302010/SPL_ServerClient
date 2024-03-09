@@ -42,7 +42,6 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
         if(opcode == Operations.ERROR.getValue())
         {
             System.out.println(packet.getErrMsg());
-
         }
 
         if(opcode == Operations.DATA.getValue()){
@@ -85,25 +84,31 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
 
         if(opcode == Operations.ACK.getValue())
         {
+
+            System.out.println("ACK recieved");
             Short blockNum = packet.getBlockNumber();
             Short newBlockNum = (short) ((int)blockNum + 1);
-            byte[] dataToSend = KeyBoard.fileChunksWRQclient.get(blockNum);
+
+            if(KeyBoard.fileChunksWRQclient != null)
+            {
+                byte[] dataToSend = KeyBoard.fileChunksWRQclient.get(blockNum);
 
 
-            if (KeyBoard.fileChunksWRQclient != null) {
-
-                // In case the all the blocks already passed we reset this fields
-                if ((blockNum >= KeyBoard.fileChunksWRQclient.size() || dataToSend.length == 0)) {
-                    KeyBoard.fileChunksWRQclient = null;
-                    KeyBoard.currFileNameWRQclient = null;
-                    System.out.println(KeyBoard.currFileNameWRQclient  + " complete!");
-                }
-            
-                if (blockNum < KeyBoard.fileChunksWRQclient.size()) {
-                    byte[] nextChunk = KeyBoard.fileChunksWRQclient.get(blockNum);
-                    if (nextChunk != null) {
-                        Packet dataPack = getDataPack((short) nextChunk.length, newBlockNum, nextChunk);
-                        return dataPack;
+                if (KeyBoard.fileChunksWRQclient != null) {
+    
+                    // In case the all the blocks already passed we reset this fields
+                    if ((blockNum >= KeyBoard.fileChunksWRQclient.size() || dataToSend.length == 0)) {
+                        KeyBoard.fileChunksWRQclient = null;
+                        KeyBoard.currFileNameWRQclient = null;
+                        System.out.println(KeyBoard.currFileNameWRQclient  + " complete!");
+                    }
+                
+                    if (blockNum < KeyBoard.fileChunksWRQclient.size()) {
+                        byte[] nextChunk = KeyBoard.fileChunksWRQclient.get(blockNum);
+                        if (nextChunk != null) {
+                            Packet dataPack = getDataPack((short) nextChunk.length, newBlockNum, nextChunk);
+                            return dataPack;
+                        }
                     }
                 }
             }

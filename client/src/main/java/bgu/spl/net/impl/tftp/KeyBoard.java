@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+
+import bgu.spl.net.impl.tftp.Packet;
+
 import java.io.File;
 import java.io.FileInputStream;
 
@@ -31,13 +34,17 @@ public class KeyBoard implements Runnable{
                 String response = scanner.nextLine();
                 Packet packet = checkInput(response);
 
-                // how to send the packet to the server???
                 if(packet!=null)
                 {
-                    listening.send(packet);
-                    try{
-                        listening.waitForServer.wait(); // wait for listening thread to notify that the server finished handeling request
-                    }catch(InterruptedException e){}
+                    synchronized (listening.waitForServer) {
+                        listening.send(packet);
+                        try {
+                            // wait for listening thread to notify that the server finished handeling request
+                            listening.waitForServer.wait();
+                            } catch (InterruptedException e) {e.printStackTrace();}
+                    }
+                    if(packet.getOpcode() == Operations.DISC.getValue())
+                        listening.shouldTerminate = true;
 
                 }
 
@@ -107,6 +114,7 @@ public class KeyBoard implements Runnable{
         else if(words.length==1 && words[0].compareTo("DISC") == 0)
         {
             packet.setOpcode(Operations.DISC.getValue());
+            shouldTerminate = true;
         }
         else
         {
