@@ -23,7 +23,7 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     private int connectionId;
     private final TftpConnections<T> connections;
     public BlockingQueue<T> packetQueue;
-    public Semaphore sem;
+    public Semaphore sem = new Semaphore(1);
 
     public BlockingConnectionHandler(Socket sock, TftpEncoderDecoder reader, TftpProtocol protocol, int connectionId , TftpConnections<T> connections) {
         this.sock = sock;
