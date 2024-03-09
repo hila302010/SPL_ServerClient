@@ -167,7 +167,16 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             connections.send(connectionId, ackPacket);
 
             if(packetSize < MAX_PACKET_SIZE){
-               
+                // File Addition successful, send broadcast
+                Packet broadcastPacket = new Packet();
+                broadcastPacket.setOpcode(Operations.BCAST.getValue());
+                broadcastPacket.setFileName(currFileNameWRQ);
+                broadcastPacket.setAddedOrDeleted(true);
+                
+                // send broadcast to all logged in users
+                for (Integer id : connections.user_names.keySet()) {
+                    connections.send(id, broadcastPacket);
+                }
                 this.currFileNameWRQ = null;
             }
         }
@@ -242,7 +251,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                 
                 // send broadcast to all logged in users
                 for (Integer id : connections.user_names.keySet()) {
-                    connections.connectionHandlers.get(id).send(broadcastPacket);
+                    connections.send(id, broadcastPacket);
                 }
                 // send ACK packet to client
                 Packet ackPacket = getAckPack((short)0);

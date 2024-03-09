@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 
 public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler<T> {
 
@@ -22,6 +23,7 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     private int connectionId;
     private final TftpConnections<T> connections;
     public BlockingQueue<T> packetQueue;
+    public Semaphore sem;
 
     public BlockingConnectionHandler(Socket sock, TftpEncoderDecoder reader, TftpProtocol protocol, int connectionId , TftpConnections<T> connections) {
         this.sock = sock;
@@ -42,7 +44,7 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
             packetQueue = new LinkedBlockingQueue<>();
 
  
-            protocol.start(connectionId, (TftpConnections<Packet>)connections);
+            protocol.start(connectionId, (TftpConnections<Packet>) connections);
             
             while (!protocol.shouldTerminate() && connected && (read = in.read()) >= 0) {
                 Packet nextMessage = encdec.decodeNextByte((byte) read);
@@ -53,10 +55,15 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
 
                 while(!packetQueue.isEmpty())
                 {
-                    T packet = packetQueue.poll();
-                    send(packet);
+                    try
+                    {
+                        sem.acquire();
+                        T packet = packetQueue.poll();
+                        send(packet);
+                        sem.release();
+                     }catch(InterruptedException e){}
                 }
-                
+
             }
 
         } catch (IOException ex) {

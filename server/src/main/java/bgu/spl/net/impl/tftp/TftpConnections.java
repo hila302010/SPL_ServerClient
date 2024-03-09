@@ -27,8 +27,16 @@ public class TftpConnections<T> implements Connections<T> {
         // TODO: Implement sending message to the specified connection
         BlockingConnectionHandler<T> handler = (BlockingConnectionHandler<T>) connectionHandlers.get(connectionId);
         if (handler != null) {
-            handler.packetQueue.offer(msg);
-            return true;
+            try
+            {
+                Boolean isLocked = handler.sem.tryAcquire(1000, null);
+                if(isLocked)
+                    handler.packetQueue.offer(msg);
+                else
+                    handler.send(msg);
+                return true;
+            }
+            catch(InterruptedException e){}
         }
         return false; // Placeholder return
     }
