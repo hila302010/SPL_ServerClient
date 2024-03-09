@@ -1,9 +1,21 @@
 package bgu.spl.net.impl.tftp;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
+import java.io.File;
+import java.io.FileInputStream;
+
+
+
 
 public class KeyBoard implements Runnable{
+
+    public static String currFileNameRRQclient = null;
+    public static String currFileNameWRQclient = null;
+    public static List<byte[]> fileChunksWRQclient;
+
     boolean shouldTerminate = false;
     private Listening listening;
 
@@ -51,12 +63,38 @@ public class KeyBoard implements Runnable{
         {
             packet.setOpcode(Operations.RRQ.getValue());
             packet.setFileName(words[1]);
+            String fileName = packet.getFileName();
+            currFileNameRRQclient = fileName;
         }
+
         else if(words.length==2 && words[0].compareTo("WRQ") == 0)
         {
-            packet.setOpcode(Operations.WRQ.getValue());
-            packet.setFileName(words[1]);
+            // To check if the file exists
+            String fileName = packet.getFileName();
+            File file = new File(fileName,"./" + words[0]);
+            if (!file.exists()) { //If the file doesn't exists we will send en error packet
+                System.out.println("File do not exist");
+            }
+            else{
+                packet.setOpcode(Operations.WRQ.getValue());
+                packet.setFileName(words[1]);
+
+                try (FileInputStream fis = new FileInputStream(file)) {
+                    fileChunksWRQclient = new ArrayList<>();
+                    byte[] buffer = new byte[512];
+                    int bytesRead = 0;
+                    while ((bytesRead = fis.read(buffer)) != -1) {
+                        byte[] chunk = new byte[bytesRead];
+                        System.arraycopy(buffer, 0, chunk, 0, bytesRead);
+                        fileChunksWRQclient.add(chunk);
+                    }
+                } catch (IOException e) {
+                    // Error reading the file, send an error packet
+                    System.out.println("Error reading file");
+                }
+            }
         }
+
         else if(words.length==1 &&words[0].compareTo("DIRQ") == 0)
         {
             packet.setOpcode(Operations.DIRQ.getValue());
@@ -72,7 +110,7 @@ public class KeyBoard implements Runnable{
         }
         else
         {
-            System.out.println("Invalid input");
+            System.out.println("Illegal TFTP operation");
             return null;
         }
 

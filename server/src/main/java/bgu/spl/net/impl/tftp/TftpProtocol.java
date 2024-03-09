@@ -57,54 +57,57 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         {
             Packet erPacket = getErrPack((short)6, "User is not logged in");
             connections.send(connectionId, erPacket);
+        }   
+        // RRQ
+        else if (opcode == Operations.RRQ.getValue())
+            readReq(packet);
+
+        // WRQ
+        else if(opcode == Operations.WRQ.getValue())
+            writeReq(packet);
+            
+        // DIRQ
+        else if(opcode == Operations.DIRQ.getValue())
+            directoryListenReq(packet);
+
+        // ACK
+        else if(opcode == Operations.ACK.getValue())
+            ackReq(packet);
+
+        // LOGRQ
+        else if(opcode == Operations.LOGRQ.getValue())
+            loginReq(packet);
+            
+        // DELRQ
+        else if(opcode == Operations.DELRQ.getValue())
+            deleteReq(packet);
+
+            // //// how do we handle this?????
+            // if(opcode == Operations.BCAST.getValue())
+            // {
+                
+            // }
+            // if(opcode == Operations.ERROR.getValue())
+            // {
+                
+            // }
+        //DATA
+        else if(opcode == Operations.DATA.getValue())
+            dataReq(packet);
+
+        // DISC
+        else if(opcode == Operations.DISC.getValue()){
+
+            Packet ackPacket = getAckPack((short)0);
+            connections.send(connectionId, ackPacket);
+            connections.disconnect(this.connectionId);
+            shouldTerminate = true;
         }
-        else{    
-            // RRQ
-            if (opcode == Operations.RRQ.getValue())
-                readReq(packet);
 
-            // WRQ
-            if(opcode == Operations.WRQ.getValue())
-                writeReq(packet);
-            
-            // DIRQ
-            if(opcode == Operations.DIRQ.getValue())
-                directoryListenReq(packet);
-
-            // ACK
-            if(opcode == Operations.ACK.getValue())
-              ackReq(packet);
-
-            // LOGRQ
-            if(opcode == Operations.LOGRQ.getValue())
-                loginReq(packet);
-            
-            // DELRQ
-            if(opcode == Operations.DELRQ.getValue())
-                deleteReq(packet);
-
-                //// how do we handle this?????
-            if(opcode == Operations.BCAST.getValue())
-            {
-                
-            }
-            if(opcode == Operations.ERROR.getValue())
-            {
-                
-            }
-            //DATA
-            if(opcode == Operations.DATA.getValue())
-                dataReq(packet);
-
-            // DISC
-            if(opcode == Operations.DISC.getValue()){
-
-                Packet ackPacket = getAckPack((short)0);
-                connections.send(connectionId, ackPacket);
-                connections.disconnect(this.connectionId);
-                shouldTerminate = true;
-
-            }
+        // If opcode is not legal
+        else{
+            Packet errorPacket = getErrPack((short)(4), "Illegal TFTP operation – Unknown Opcode");
+            connections.send(connectionId, errorPacket);
         }
     }
 
