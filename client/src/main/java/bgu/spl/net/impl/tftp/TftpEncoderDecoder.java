@@ -84,7 +84,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
             }
             else if(opcode == Operations.BCAST.getValue() && bufferCurrentPosition > 2)
             {
-                boolean addedDeleted = buffer[2] != 0;
+                boolean addedDeleted = (buffer[2] != 0);
                 String fileName = new String(buffer, 3, bufferCurrentPosition-4, StandardCharsets.UTF_8);
                 packet.setFileName(fileName);
                 packet.setAddedOrDeleted(addedDeleted);
