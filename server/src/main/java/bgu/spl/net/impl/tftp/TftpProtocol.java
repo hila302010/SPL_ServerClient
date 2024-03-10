@@ -24,7 +24,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
     private boolean shouldTerminate;
     private int connectionId;
     private TftpConnections<Packet> connections;
-    private static final String FILES_FOLDER_PATH = "./server/Files";
+    private static final String FILES_FOLDER_PATH = "./Files";
     private File filesFolder;
 
     private String currFileNameWRQ;

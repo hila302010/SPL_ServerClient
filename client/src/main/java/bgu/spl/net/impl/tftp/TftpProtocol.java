@@ -102,9 +102,9 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
 
                 // In case the all the blocks already passed we reset this fields
                 if ((blockNum >= KeyBoard.fileChunksWRQclient.size())) {
+                    System.out.println(KeyBoard.currFileNameWRQclient  + " complete!");
                     KeyBoard.fileChunksWRQclient = null;
                     KeyBoard.currFileNameWRQclient = null;
-                    System.out.println(KeyBoard.currFileNameWRQclient  + " complete!");
                 }
             
                 else if (blockNum < KeyBoard.fileChunksWRQclient.size()) {

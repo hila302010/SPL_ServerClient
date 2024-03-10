@@ -86,6 +86,7 @@ public class KeyBoard implements Runnable{
                 packet.setOpcode(Operations.WRQ.getValue());
                 packet.setFileName(words[1]);
 
+                KeyBoard.currFileNameWRQclient = fileName;
                 try (FileInputStream fis = new FileInputStream(file)) {
                     fileChunksWRQclient = new ArrayList<>();
                     byte[] buffer = new byte[512];
