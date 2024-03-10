@@ -1,6 +1,9 @@
 package bgu.spl.net.impl.tftp;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -68,9 +71,15 @@ public class KeyBoard implements Runnable{
         }
         else if(words.length==2 && words[0].compareTo("RRQ") == 0)
         {
+            String fileName = words[1];
+
+            // check if the file exist
+            File file = new File("./" + fileName);
+            if (file.exists()) { //If the file doesn't exists we will send en error packet
+                deleteFileContents("./" + fileName);
+            }
             packet.setOpcode(Operations.RRQ.getValue());
-            packet.setFileName(words[1]);
-            String fileName = packet.getFileName();
+            packet.setFileName(fileName);
             currFileNameRRQclient = fileName;
         }
 
@@ -124,5 +133,13 @@ public class KeyBoard implements Runnable{
         }
 
         return packet;
+    }
+
+        public static void deleteFileContents(String filePath) {
+        try {
+            Path path = Paths.get(filePath);
+            Files.write(path, new byte[0]); // Overwrite the file contents with an empty byte array
+        } catch (IOException e) {
+        }
     }
 }

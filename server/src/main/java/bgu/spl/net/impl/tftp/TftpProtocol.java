@@ -83,15 +83,6 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         else if(opcode == Operations.DELRQ.getValue())
             deleteReq(packet);
 
-            // //// how do we handle this?????
-            // if(opcode == Operations.BCAST.getValue())
-            // {
-                
-            // }
-            // if(opcode == Operations.ERROR.getValue())
-            // {
-                
-            // }
         //DATA
         else if(opcode == Operations.DATA.getValue())
             dataReq(packet);
@@ -189,6 +180,8 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                     connections.send(id, broadcastPacket);
                 }
                 this.currFileNameWRQ = null;
+
+                System.out.println("Complete !");
             }
         }
     }
