@@ -16,6 +16,7 @@ public class Listening implements Runnable{
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private boolean serverConnected = false;
+    boolean shouldTerminate = false;
     public Object waitForServer = new Object();
 
 
@@ -32,18 +33,22 @@ public class Listening implements Runnable{
             in = new BufferedInputStream(sock.getInputStream());
             out = new BufferedOutputStream(sock.getOutputStream());       
 
-            while ((read = in.read()) >= 0) {
+            while ((read = in.read()) >= 0 && !shouldTerminate)  {
                 Packet nextMessage = encdec.decodeNextByte((byte) read);
                 if (nextMessage != null) {
                     Packet packetToSend = protocol.process((Packet) nextMessage);
                     encdec.reset();
                     if(packetToSend != null)
-                        send(nextMessage);
-                    else
-                        waitForServer.notify();
+                        send(packetToSend);
+                    else{
+                        synchronized(waitForServer){
+                            waitForServer.notify();
+                        }
+                    }
                 }
             }
-        }catch(Exception e){}
+        }
+        catch(Exception e){System.out.println(e);}
     }
 
     public void send(Packet msg) {
@@ -57,8 +62,10 @@ public class Listening implements Runnable{
         }
     }
 
-        
     public boolean isServerConnected() {
         return serverConnected;
+    }
+    public boolean shouldTerminate() {
+        return shouldTerminate;
     }
 }
