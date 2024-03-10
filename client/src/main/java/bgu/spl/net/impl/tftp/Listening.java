@@ -39,11 +39,12 @@ public class Listening implements Runnable{
                     Packet packetToSend = protocol.process((Packet) nextMessage);
                     encdec.reset();
                     if(packetToSend != null)
-                        send(nextMessage);
-                    else
+                        send(packetToSend);
+                    else{
                         synchronized(waitForServer){
                             waitForServer.notify();
                         }
+                    }
                 }
             }
         }

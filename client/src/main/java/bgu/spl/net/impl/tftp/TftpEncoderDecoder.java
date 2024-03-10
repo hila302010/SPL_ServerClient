@@ -74,14 +74,6 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
                 packet.setUserName(userName);
                 return packet;
             }
-            else if(opcode == Operations.BCAST.getValue() && bufferCurrentPosition > 2)
-            {
-                boolean addedDeleted = (buffer[2] != 0);
-                String fileName = new String(buffer, 3, bufferCurrentPosition-4, StandardCharsets.UTF_8);
-                packet.setFileName(fileName);
-                packet.setAddedOrDeleted(addedDeleted);
-                return packet;
-            }
         }
         if(nextByte == 0 && opcode==Operations.ERROR.getValue())
         {
@@ -93,6 +85,14 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<Packet> {
                 packet.setErrMsg(errorMsg);
                 return packet;
             }
+        }
+        if(nextByte == 0 && opcode == Operations.BCAST.getValue() && bufferCurrentPosition > 4)
+        {
+            boolean addedDeleted = (buffer[2] != 0);
+            String fileName = new String(buffer, 3, bufferCurrentPosition-4, StandardCharsets.UTF_8);
+            packet.setFileName(fileName);
+            packet.setAddedOrDeleted(addedDeleted);
+            return packet;
         }
 
         return null; // not a packet yet

@@ -4,6 +4,8 @@ package bgu.spl.net.impl.tftp;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 
 import bgu.spl.net.api.MessagingProtocol;
@@ -15,7 +17,7 @@ import bgu.spl.net.impl.tftp.KeyBoard;
 public class TftpProtocol implements MessagingProtocol<Packet>  {
 
     private boolean shouldTerminate;
-    private static final String FILES_FOLDER_PATH = "./";
+    private static final String FILES_FOLDER_PATH = "./Files";
     private File filesFolder;
 
     private String currFileNameWRQ;
@@ -35,6 +37,7 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
             if(packet.getAddedOrDeleted()){
                 status = "added";
             }
+            System.out.println("Handling BCAST");
             System.out.println("The file " + packet.getFileName() + " has been " + status);
             System.out.println();
         }
@@ -47,10 +50,14 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
         if(opcode == Operations.DATA.getValue()){
             if(KeyBoard.currFileNameRRQclient != null){
 
+                // it's RRQ 
                 short packetSize = packet.getPacketSize();
                 short blockNumber = packet.getBlockNumber();
                 byte[] data = packet.getData();
 
+                System.out.println("Received: block " + blockNumber + " size " + packetSize + " data " + Arrays.toString(data));
+                System.out.println("Handling DATA");
+                
                 try{
                     FileOutputStream fos = new FileOutputStream("./" + KeyBoard.currFileNameRRQclient, true);
 
@@ -63,55 +70,52 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
                 Packet ackPacket = getAckPack(blockNumber);
 
                 if(packetSize < MAX_PACKET_SIZE){
-                    // File Addition successful, send broadcast
-                    Packet broadcastPacket = new Packet();
-                    broadcastPacket.setOpcode(Operations.BCAST.getValue());
-                    broadcastPacket.setFileName(currFileNameWRQ);
-                    broadcastPacket.setAddedOrDeleted(true);
                     
                     KeyBoard.currFileNameRRQclient = null;
-                    
                 }
-                return ackPacket;
+                else{
+                    return ackPacket;
+                }
+            }
+            else{
+                //it's DIRQ 
+                String files = new String(packet.getData(), 0, packet.getData().length, StandardCharsets.UTF_8);
+                for(String file : files.split("\0"))
+                {
+                    System.out.println(file);
+                }
+                
             }
             
-        }
-        if(opcode == Operations.DATA.getValue())
-        {
-            // sending data in WRQ
         }
 
 
         if(opcode == Operations.ACK.getValue())
         {
 
-            System.out.println("ACK recieved");
+            System.out.println("Received: opcode " + packet.getOpcode() + " blockNum " + packet.getBlockNumber());
+            System.out.println("Handling ACK");
             Short blockNum = packet.getBlockNumber();
             Short newBlockNum = (short) ((int)blockNum + 1);
 
-            if(KeyBoard.fileChunksWRQclient != null)
-            {
-                byte[] dataToSend = KeyBoard.fileChunksWRQclient.get(blockNum);
+            if (KeyBoard.fileChunksWRQclient != null) {
 
-
-                if (KeyBoard.fileChunksWRQclient != null) {
-    
-                    // In case the all the blocks already passed we reset this fields
-                    if ((blockNum >= KeyBoard.fileChunksWRQclient.size() || dataToSend.length == 0)) {
-                        KeyBoard.fileChunksWRQclient = null;
-                        KeyBoard.currFileNameWRQclient = null;
-                        System.out.println(KeyBoard.currFileNameWRQclient  + " complete!");
-                    }
-                
-                    if (blockNum < KeyBoard.fileChunksWRQclient.size()) {
-                        byte[] nextChunk = KeyBoard.fileChunksWRQclient.get(blockNum);
-                        if (nextChunk != null) {
-                            Packet dataPack = getDataPack((short) nextChunk.length, newBlockNum, nextChunk);
-                            return dataPack;
-                        }
+                // In case the all the blocks already passed we reset this fields
+                if ((blockNum >= KeyBoard.fileChunksWRQclient.size())) {
+                    KeyBoard.fileChunksWRQclient = null;
+                    KeyBoard.currFileNameWRQclient = null;
+                    System.out.println(KeyBoard.currFileNameWRQclient  + " complete!");
+                }
+            
+                else if (blockNum < KeyBoard.fileChunksWRQclient.size()) {
+                    byte[] nextChunk = KeyBoard.fileChunksWRQclient.get(blockNum);
+                    if (nextChunk != null) {
+                        Packet dataPack = getDataPack((short) nextChunk.length, newBlockNum, nextChunk);
+                        return dataPack;
                     }
                 }
             }
+            
             // sending ACK in RRQ
         }
 

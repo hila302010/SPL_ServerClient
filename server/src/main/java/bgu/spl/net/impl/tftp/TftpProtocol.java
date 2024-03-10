@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -23,7 +24,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
     private boolean shouldTerminate;
     private int connectionId;
     private TftpConnections<Packet> connections;
-    private static final String FILES_FOLDER_PATH = "./Files";
+    private static final String FILES_FOLDER_PATH = "./server/Files";
     private File filesFolder;
 
     private String currFileNameWRQ;
@@ -133,6 +134,8 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
 
     public void ackReq(Packet packet)
     {
+        System.out.println("Received: opcode " + packet.getOpcode() + " blockNum " + packet.getBlockNumber());
+        System.out.println("Handling ACK");
         if (fileChunksRRQ != null) {
             Short blockNum = packet.getBlockNumber();
             Short newBlockNum = (short) ((int)blockNum + 1);
@@ -143,6 +146,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                 if (nextChunk != null) {
                     Packet dataPack = getDataPack((short) nextChunk.length, newBlockNum, nextChunk);
                     connections.send(connectionId, dataPack);
+                    System.out.println("Sent block " + blockNum);
                 }
             }
         }
@@ -157,6 +161,9 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             short blockNumber = packet.getBlockNumber();
             byte[] data = packet.getData();
 
+            System.out.println("Received: block " + blockNumber + " size " + packetSize + " data " + Arrays.toString(data));
+            System.out.println("Handling DATA");
+
             try{
                 FileOutputStream fos = new FileOutputStream(FILES_FOLDER_PATH + "/" + this.currFileNameWRQ, true);
 
@@ -165,6 +172,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                 fos.close();
             }
             catch (IOException e){};
+            
 
             Packet ackPacket = getAckPack(blockNumber);
             connections.send(connectionId, ackPacket);
@@ -279,17 +287,19 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         
         String userName = packet.getUserName();
         Boolean isExist = false;
-
-        // needs to add userName if it doesn't exist
-        for(String name: connections.user_names.values()){
-
-            //in case name already exists
-            if(name.compareTo(userName) == 0){
-                Packet errorPacket = getErrPack((short)(7), "The name " + userName + " is Already exists");
-                isExist = true;
-                connections.send(connectionId, errorPacket);
-            }
+        if(connections.user_names.containsKey(connectionId))
+        {
+            Packet errorPacket = getErrPack((short)(7), "You are already logged in");
+            isExist = true;
+            connections.send(connectionId, errorPacket);
         }
+        //in case name already exists
+        else if(connections.user_names.containsValue(userName)){
+            Packet errorPacket = getErrPack((short)(7), "The name " + userName + " Already exists");
+            isExist = true;
+            connections.send(connectionId, errorPacket);
+        }
+        
         // if successful send ACK RQ:
         if(!isExist){
             connections.user_names.put(connectionId, userName);

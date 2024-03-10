@@ -77,8 +77,8 @@ public class KeyBoard implements Runnable{
         else if(words.length==2 && words[0].compareTo("WRQ") == 0)
         {
             // To check if the file exists
-            String fileName = packet.getFileName();
-            File file = new File(fileName,"./" + words[0]);
+            String fileName = words[1];
+            File file = new File("./" + fileName);
             if (!file.exists()) { //If the file doesn't exists we will send en error packet
                 System.out.println("File do not exist");
             }
@@ -102,7 +102,7 @@ public class KeyBoard implements Runnable{
             }
         }
 
-        else if(words.length==1 &&words[0].compareTo("DIRQ") == 0)
+        else if(words.length==1 && words[0].compareTo("DIRQ") == 0)
         {
             packet.setOpcode(Operations.DIRQ.getValue());
         }
