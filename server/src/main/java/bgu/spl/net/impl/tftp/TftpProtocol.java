@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -17,6 +18,9 @@ import bgu.spl.net.srv.BlockingConnectionHandler;
 import bgu.spl.net.srv.Connections;
 import bgu.spl.net.impl.tftp.Packet;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 
 
 public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
@@ -25,7 +29,9 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
     private int connectionId;
     private TftpConnections<Packet> connections;
     private static final String FILES_FOLDER_PATH = "./Files";
+    private static final String TEMP_FOLDER_PATH = "./TempLocation";
     private File filesFolder;
+    private File tempFilesFolder;
 
     private String currFileNameWRQ;
     private final Short MAX_PACKET_SIZE = (short)512;
@@ -40,6 +46,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
        this.connectionId = connectionId;
        this.connections =  (TftpConnections<Packet>) connections;
        filesFolder = new File(FILES_FOLDER_PATH);
+       tempFilesFolder = new File(TEMP_FOLDER_PATH);
 
        currFileNameWRQ = null;
 
@@ -156,7 +163,7 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
             System.out.println("Handling DATA");
 
             try{
-                FileOutputStream fos = new FileOutputStream(FILES_FOLDER_PATH + "/" + this.currFileNameWRQ, true);
+                FileOutputStream fos = new FileOutputStream(TEMP_FOLDER_PATH + "/" + this.currFileNameWRQ, true);
 
                 fos.write(data, 0, (int)packetSize);
 
@@ -179,6 +186,10 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
                 for (Integer id : connections.user_names.keySet()) {
                     connections.send(id, broadcastPacket);
                 }
+
+                // Move file from temp folder to Files
+                moveFile(currFileNameWRQ);
+
                 this.currFileNameWRQ = null;
 
                 System.out.println("Complete !");
@@ -382,6 +393,17 @@ public class TftpProtocol implements BidiMessagingProtocol<Packet>  {
         dataPacket.setData(data); 
 
         return dataPacket;
+    }
+
+    private static void moveFile(String filename) {
+        // Define paths for source file and destination folder
+        Path sourceFile = Paths.get(TEMP_FOLDER_PATH, filename);
+        Path destinationFolder = Paths.get(FILES_FOLDER_PATH);
+
+        try {
+            // Move the file to the destination folder
+            Files.move(sourceFile, destinationFolder.resolve(filename));
+        } catch (IOException e) {}
     }
 
 
