@@ -72,6 +72,7 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
                 if(packetSize < MAX_PACKET_SIZE){
                     
                     KeyBoard.currFileNameRRQclient = null;
+                    System.out.println("complete !");
                 }
                 else{
                     return ackPacket;
@@ -110,6 +111,7 @@ public class TftpProtocol implements MessagingProtocol<Packet>  {
                 else if (blockNum < KeyBoard.fileChunksWRQclient.size()) {
                     byte[] nextChunk = KeyBoard.fileChunksWRQclient.get(blockNum);
                     if (nextChunk != null) {
+                        System.out.println("complete !");
                         Packet dataPack = getDataPack((short) nextChunk.length, newBlockNum, nextChunk);
                         return dataPack;
                     }
