@@ -108,8 +108,8 @@ Thumbs.db
 # Windows Zone Identifier files
 *:Zone.Identifier
 
-# Development containers (uncomment if you don't want to track devcontainer config)
-# .devcontainer/
+# Development containers
+.devcontainer/
 
-# VS Code settings (uncomment if you don't want to track workspace settings)
-# .vscode/
+# VS Code settings
+.vscode/
